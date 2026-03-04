@@ -134,11 +134,11 @@ func (w *Worker) processViewCountQueue(workerID int) {
 				Where("id = ?", view.PostID).
 				UpdateColumn("views", gorm.Expr("views + 1")).Error; err != nil {
 				logger.Error("Failed to update view count",
-					zap.Uint("post_id", view.PostID),
+					zap.Int64("post_id", view.PostID),
 					zap.Error(err))
 			} else {
 				logger.Debug("View count updated",
-					zap.Uint("post_id", view.PostID))
+					zap.Int64("post_id", view.PostID))
 			}
 		}
 	}
@@ -175,12 +175,12 @@ func (w *Worker) processLikeCountQueue(workerID int) {
 
 			if err := w.updateLikeCount(&like); err != nil {
 				logger.Error("Failed to update like count",
-					zap.Uint("post_id", like.PostID),
+					zap.Int64("post_id", like.PostID),
 					zap.Uint("comment_id", like.CommentID),
 					zap.Error(err))
 			} else {
 				logger.Debug("Like count updated",
-					zap.Uint("post_id", like.PostID),
+					zap.Int64("post_id", like.PostID),
 					zap.Uint("comment_id", like.CommentID),
 					zap.String("action", like.Action))
 			}
@@ -228,3 +228,18 @@ func (w *Worker) sendEmail(to, subject, body string) error {
 
 	return smtp.SendMail(addr, auth, w.emailConfig.From, []string{to}, msg)
 }
+
+/*消息队列整体架构如下
+┌─────────────────────────────────────────┐
+│              Worker Pool                │
+│  ┌─────────┐ ┌─────────┐ ┌─────────┐   │
+│  │ Email   │ │ View    │ │ Like    │   │
+│  │ Worker  │ │ Worker  │ │ Worker  │   │
+│  │  (N个)  │ │  (N个)  │ │  (N个)  │   │
+│  └────┬────┘ └────┬────┘ └────┬────┘   │
+│       └─────────────┴─────────────┘      │
+│              3 个独立队列                 │
+│    QueueKeyEmail | QueueKeyViewCount     │
+│              QueueKeyLikeCount           │
+└─────────────────────────────────────────┘
+*/

@@ -2,7 +2,7 @@ mysql:
   host: localhost
   port: 3306
   user: root
-  password:yourpassword
+  password: qweasdzxc
   database: bbs_demo
 
 server:
@@ -17,11 +17,11 @@ logger:
   output_path: logs
 
 jwt:
-  secret: your-jwtkey
+  secret: jwtkey!!!!!!!!!OHYEAH!OHYEAH!OHYEAH!!!!
 
 email:
-  host: smtp.example.com
+  host: smtp.qq.com
   port: 587
-  username: your-email@example.com
-  password: your-email-password
-  from: your-email@example.com
+  username: eyuforum@foxmail.com
+  password: bqakqrzeeobbcbhh
+  from: eyuforum@foxmail.com

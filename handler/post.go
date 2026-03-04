@@ -540,13 +540,13 @@ func (h *PostHandler) FavoritePost(c *gin.Context) {
 func (h *PostHandler) UnfavoritePost(c *gin.Context) {
 	userID, _ := c.Get("userID")
 
-	postID, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	postID, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid post ID"})
 		return
 	}
 
-	if err := h.postService.UnfavoritePost(userID.(int64), uint(postID)); err != nil {
+	if err := h.postService.UnfavoritePost(userID.(int64), postID); err != nil {
 		switch err {
 		case service.ErrNotFavorited:
 			c.JSON(http.StatusNotFound, gin.H{"error": "Not favorited"})
