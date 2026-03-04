@@ -25,13 +25,13 @@ type TokenPair struct {
 }
 
 type Claims struct {
-	UserID uint   `json:"user_id"`
+	UserID int64  `json:"user_id"`
 	Email  string `json:"email"`
 	Type   string `json:"type"`
 	jwt.RegisteredClaims
 }
 
-func GenerateTokenPair(userID uint, email string) (*TokenPair, error) {
+func GenerateTokenPair(userID int64, email string) (*TokenPair, error) {
 	accessToken, err := generateAccessToken(userID, email)
 	if err != nil {
 		return nil, err
@@ -49,7 +49,7 @@ func GenerateTokenPair(userID uint, email string) (*TokenPair, error) {
 	}, nil
 }
 
-func generateAccessToken(userID uint, email string) (string, error) {
+func generateAccessToken(userID int64, email string) (string, error) {
 	claims := Claims{
 		UserID: userID,
 		Email:  email,
@@ -65,7 +65,7 @@ func generateAccessToken(userID uint, email string) (string, error) {
 	return token.SignedString(jwtSecret)
 }
 
-func generateRefreshToken(userID uint, email string) (string, error) {
+func generateRefreshToken(userID int64, email string) (string, error) {
 	claims := Claims{
 		UserID: userID,
 		Email:  email,

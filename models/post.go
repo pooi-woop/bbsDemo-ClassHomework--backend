@@ -7,12 +7,12 @@ import (
 )
 
 type Post struct {
-	ID        uint           `gorm:"primarykey" json:"id"`
+	ID        int64          `gorm:"primarykey" json:"id"`
 	CreatedAt time.Time      `json:"created_at"`
 	UpdatedAt time.Time      `json:"updated_at"`
 	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"`
 
-	UserID  uint   `gorm:"index;not null" json:"user_id"`
+	UserID  int64  `gorm:"index;not null" json:"user_id"`
 	Title   string `gorm:"size:200;not null" json:"title"`
 	Content string `gorm:"type:text;not null" json:"content"`
 	Views   int    `gorm:"default:0" json:"views"`
@@ -28,7 +28,7 @@ type Comment struct {
 
 	PostID    *uint  `gorm:"index" json:"post_id"`
 	CommentID *uint  `gorm:"index" json:"comment_id"`
-	UserID    uint   `gorm:"index;not null" json:"user_id"`
+	UserID    int64  `gorm:"index;not null" json:"user_id"`
 	Content   string `gorm:"type:text;not null" json:"content"`
 	IsDeleted bool   `gorm:"default:false" json:"is_deleted"`
 
@@ -43,9 +43,9 @@ type Like struct {
 	UpdatedAt time.Time      `json:"updated_at"`
 	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"`
 
-	UserID    uint  `gorm:"index;not null" json:"user_id"`
-	PostID    *uint `gorm:"index" json:"post_id"`
-	CommentID *uint `gorm:"index" json:"comment_id"`
+	UserID    int64  `gorm:"index;not null" json:"user_id"`
+	PostID    *int64 `gorm:"index" json:"post_id"`
+	CommentID *uint  `gorm:"index" json:"comment_id"`
 
 	User    *User    `gorm:"foreignKey:UserID" json:"user,omitempty"`
 	Post    *Post    `gorm:"foreignKey:PostID" json:"post,omitempty"`
@@ -58,8 +58,8 @@ type Block struct {
 	UpdatedAt time.Time      `json:"updated_at"`
 	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"`
 
-	UserID    uint `gorm:"index;not null" json:"user_id"`
-	BlockedID uint `gorm:"index;not null" json:"blocked_id"`
+	UserID    int64 `gorm:"index;not null" json:"user_id"`
+	BlockedID int64 `gorm:"index;not null" json:"blocked_id"`
 
 	User    *User `gorm:"foreignKey:UserID" json:"user,omitempty"`
 	Blocked *User `gorm:"foreignKey:BlockedID" json:"blocked,omitempty"`
@@ -71,7 +71,7 @@ type FavoriteFolder struct {
 	UpdatedAt time.Time      `json:"updated_at"`
 	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"`
 
-	UserID    uint   `gorm:"index;not null" json:"user_id"`
+	UserID    int64  `gorm:"index;not null" json:"user_id"`
 	Name      string `gorm:"size:50;not null" json:"name"`
 	IsDefault bool   `gorm:"default:false" json:"is_default"`
 
@@ -84,9 +84,9 @@ type Favorite struct {
 	UpdatedAt time.Time      `json:"updated_at"`
 	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"`
 
-	UserID   uint `gorm:"index;not null" json:"user_id"`
-	PostID   uint `gorm:"index;not null" json:"post_id"`
-	FolderID uint `gorm:"index;not null" json:"folder_id"`
+	UserID   int64 `gorm:"index;not null" json:"user_id"`
+	PostID   int64 `gorm:"index;not null" json:"post_id"`
+	FolderID uint  `gorm:"index;not null" json:"folder_id"`
 
 	User   *User           `gorm:"foreignKey:UserID" json:"user,omitempty"`
 	Post   *Post           `gorm:"foreignKey:PostID" json:"post,omitempty"`

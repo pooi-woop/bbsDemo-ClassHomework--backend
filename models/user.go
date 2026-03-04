@@ -7,19 +7,19 @@ import (
 )
 
 type User struct {
-	ID        uint           `gorm:"primarykey" json:"id"`
+	ID        int64          `gorm:"primarykey" json:"id"`
 	CreatedAt time.Time      `json:"created_at"`
 	UpdatedAt time.Time      `json:"updated_at"`
 	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"`
 
-	Email          string `gorm:"uniqueIndex;not null" json:"email"`
-	Password       string `gorm:"not null" json:"-"`
-	Nickname       string `json:"nickname"`
-	Avatar         string `json:"avatar"`
-	Status         int    `gorm:"default:1" json:"status"`
-	IsVerified     bool   `gorm:"default:false" json:"is_verified"`
-	LastLoginAt    *time.Time `json:"last_login_at"`
-	LastLoginIP    string `json:"last_login_ip"`
+	Email       string     `gorm:"uniqueIndex;not null" json:"email"`
+	Password    string     `gorm:"not null" json:"-"`
+	Nickname    string     `json:"nickname"`
+	Avatar      string     `json:"avatar"`
+	Status      int        `gorm:"default:1" json:"status"`
+	IsVerified  bool       `gorm:"default:false" json:"is_verified"`
+	LastLoginAt *time.Time `json:"last_login_at"`
+	LastLoginIP string     `json:"last_login_ip"`
 }
 
 type VerificationCode struct {
@@ -41,7 +41,7 @@ type RefreshToken struct {
 	UpdatedAt time.Time      `json:"updated_at"`
 	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"`
 
-	UserID    uint      `gorm:"index;not null" json:"user_id"`
+	UserID    int64     `gorm:"index;not null" json:"user_id"`
 	Token     string    `gorm:"uniqueIndex;not null" json:"-"`
 	ExpiresAt time.Time `gorm:"not null" json:"expires_at"`
 	IsRevoked bool      `gorm:"default:false" json:"is_revoked"`

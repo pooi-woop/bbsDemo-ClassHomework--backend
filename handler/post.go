@@ -27,7 +27,7 @@ func (h *PostHandler) CreatePost(c *gin.Context) {
 		return
 	}
 
-	post, err := h.postService.CreatePost(userID.(uint), req)
+	post, err := h.postService.CreatePost(userID.(int64), req)
 	if err != nil {
 		logger.Error("Failed to create post", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create post"})
@@ -40,7 +40,7 @@ func (h *PostHandler) CreatePost(c *gin.Context) {
 func (h *PostHandler) UpdatePost(c *gin.Context) {
 	userID, _ := c.Get("userID")
 
-	postID, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	postID, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid post ID"})
 		return
@@ -52,7 +52,7 @@ func (h *PostHandler) UpdatePost(c *gin.Context) {
 		return
 	}
 
-	post, err := h.postService.UpdatePost(userID.(uint), uint(postID), req)
+	post, err := h.postService.UpdatePost(userID.(int64), postID, req)
 	if err != nil {
 		switch err {
 		case service.ErrPostNotFound:
@@ -70,13 +70,13 @@ func (h *PostHandler) UpdatePost(c *gin.Context) {
 func (h *PostHandler) DeletePost(c *gin.Context) {
 	userID, _ := c.Get("userID")
 
-	postID, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	postID, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid post ID"})
 		return
 	}
 
-	if err := h.postService.DeletePost(userID.(uint), uint(postID)); err != nil {
+	if err := h.postService.DeletePost(userID.(int64), postID); err != nil {
 		switch err {
 		case service.ErrPostNotFound:
 			c.JSON(http.StatusNotFound, gin.H{"error": "Post not found"})
@@ -91,13 +91,13 @@ func (h *PostHandler) DeletePost(c *gin.Context) {
 }
 
 func (h *PostHandler) GetPost(c *gin.Context) {
-	postID, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	postID, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid post ID"})
 		return
 	}
 
-	post, err := h.postService.GetPost(uint(postID))
+	post, err := h.postService.GetPost(postID)
 	if err != nil {
 		switch err {
 		case service.ErrPostNotFound:
@@ -147,7 +147,7 @@ func (h *PostHandler) CreateComment(c *gin.Context) {
 		return
 	}
 
-	comment, err := h.postService.CreateComment(userID.(uint), req)
+	comment, err := h.postService.CreateComment(userID.(int64), req)
 	if err != nil {
 		logger.Error("Failed to create comment", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create comment"})
@@ -166,7 +166,7 @@ func (h *PostHandler) DeleteComment(c *gin.Context) {
 		return
 	}
 
-	if err := h.postService.DeleteComment(userID.(uint), uint(commentID)); err != nil {
+	if err := h.postService.DeleteComment(userID.(int64), uint(commentID)); err != nil {
 		switch err {
 		case service.ErrCommentNotFound:
 			c.JSON(http.StatusNotFound, gin.H{"error": "Comment not found"})
@@ -247,13 +247,13 @@ func (h *PostHandler) GetReplies(c *gin.Context) {
 func (h *PostHandler) LikePost(c *gin.Context) {
 	userID, _ := c.Get("userID")
 
-	postID, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	postID, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid post ID"})
 		return
 	}
 
-	if err := h.postService.LikePost(userID.(uint), uint(postID)); err != nil {
+	if err := h.postService.LikePost(userID.(int64), postID); err != nil {
 		switch err {
 		case service.ErrAlreadyLiked:
 			c.JSON(http.StatusConflict, gin.H{"error": "Already liked"})
@@ -270,13 +270,13 @@ func (h *PostHandler) LikePost(c *gin.Context) {
 func (h *PostHandler) UnlikePost(c *gin.Context) {
 	userID, _ := c.Get("userID")
 
-	postID, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	postID, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid post ID"})
 		return
 	}
 
-	if err := h.postService.UnlikePost(userID.(uint), uint(postID)); err != nil {
+	if err := h.postService.UnlikePost(userID.(int64), postID); err != nil {
 		switch err {
 		case service.ErrNotLiked:
 			c.JSON(http.StatusNotFound, gin.H{"error": "Not liked"})
@@ -299,7 +299,7 @@ func (h *PostHandler) LikeComment(c *gin.Context) {
 		return
 	}
 
-	if err := h.postService.LikeComment(userID.(uint), uint(commentID)); err != nil {
+	if err := h.postService.LikeComment(userID.(int64), uint(commentID)); err != nil {
 		switch err {
 		case service.ErrAlreadyLiked:
 			c.JSON(http.StatusConflict, gin.H{"error": "Already liked"})
@@ -322,7 +322,7 @@ func (h *PostHandler) UnlikeComment(c *gin.Context) {
 		return
 	}
 
-	if err := h.postService.UnlikeComment(userID.(uint), uint(commentID)); err != nil {
+	if err := h.postService.UnlikeComment(userID.(int64), uint(commentID)); err != nil {
 		switch err {
 		case service.ErrNotLiked:
 			c.JSON(http.StatusNotFound, gin.H{"error": "Not liked"})
@@ -339,13 +339,13 @@ func (h *PostHandler) UnlikeComment(c *gin.Context) {
 func (h *PostHandler) BlockUser(c *gin.Context) {
 	userID, _ := c.Get("userID")
 
-	blockedID, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	blockedID, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
 		return
 	}
 
-	if err := h.postService.BlockUser(userID.(uint), uint(blockedID)); err != nil {
+	if err := h.postService.BlockUser(userID.(int64), blockedID); err != nil {
 		switch err {
 		case service.ErrAlreadyBlocked:
 			c.JSON(http.StatusConflict, gin.H{"error": "Already blocked"})
@@ -364,13 +364,13 @@ func (h *PostHandler) BlockUser(c *gin.Context) {
 func (h *PostHandler) UnblockUser(c *gin.Context) {
 	userID, _ := c.Get("userID")
 
-	blockedID, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	blockedID, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
 		return
 	}
 
-	if err := h.postService.UnblockUser(userID.(uint), uint(blockedID)); err != nil {
+	if err := h.postService.UnblockUser(userID.(int64), blockedID); err != nil {
 		switch err {
 		case service.ErrNotBlocked:
 			c.JSON(http.StatusNotFound, gin.H{"error": "Not blocked"})
@@ -397,7 +397,7 @@ func (h *PostHandler) GetBlockedUsers(c *gin.Context) {
 		pageSize = 10
 	}
 
-	users, total, err := h.postService.GetBlockedUsers(userID.(uint), page, pageSize)
+	users, total, err := h.postService.GetBlockedUsers(userID.(int64), page, pageSize)
 	if err != nil {
 		logger.Error("Failed to get blocked users", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get blocked users"})
@@ -421,7 +421,7 @@ func (h *PostHandler) CreateFolder(c *gin.Context) {
 		return
 	}
 
-	folder, err := h.postService.CreateFolder(userID.(uint), req)
+	folder, err := h.postService.CreateFolder(userID.(int64), req)
 	if err != nil {
 		switch err {
 		case service.ErrFolderExists:
@@ -451,7 +451,7 @@ func (h *PostHandler) UpdateFolder(c *gin.Context) {
 		return
 	}
 
-	folder, err := h.postService.UpdateFolder(userID.(uint), uint(folderID), req)
+	folder, err := h.postService.UpdateFolder(userID.(int64), uint(folderID), req)
 	if err != nil {
 		switch err {
 		case service.ErrFolderNotFound:
@@ -479,7 +479,7 @@ func (h *PostHandler) DeleteFolder(c *gin.Context) {
 		return
 	}
 
-	if err := h.postService.DeleteFolder(userID.(uint), uint(folderID)); err != nil {
+	if err := h.postService.DeleteFolder(userID.(int64), uint(folderID)); err != nil {
 		switch err {
 		case service.ErrFolderNotFound:
 			c.JSON(http.StatusNotFound, gin.H{"error": "Folder not found"})
@@ -500,7 +500,7 @@ func (h *PostHandler) DeleteFolder(c *gin.Context) {
 func (h *PostHandler) GetFolders(c *gin.Context) {
 	userID, _ := c.Get("userID")
 
-	folders, err := h.postService.GetFolders(userID.(uint))
+	folders, err := h.postService.GetFolders(userID.(int64))
 	if err != nil {
 		logger.Error("Failed to get folders", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get folders"})
@@ -519,7 +519,7 @@ func (h *PostHandler) FavoritePost(c *gin.Context) {
 		return
 	}
 
-	if err := h.postService.FavoritePost(userID.(uint), req); err != nil {
+	if err := h.postService.FavoritePost(userID.(int64), req); err != nil {
 		switch err {
 		case service.ErrAlreadyFavorited:
 			c.JSON(http.StatusConflict, gin.H{"error": "Already favorited"})
@@ -546,7 +546,7 @@ func (h *PostHandler) UnfavoritePost(c *gin.Context) {
 		return
 	}
 
-	if err := h.postService.UnfavoritePost(userID.(uint), uint(postID)); err != nil {
+	if err := h.postService.UnfavoritePost(userID.(int64), uint(postID)); err != nil {
 		switch err {
 		case service.ErrNotFavorited:
 			c.JSON(http.StatusNotFound, gin.H{"error": "Not favorited"})
@@ -563,7 +563,7 @@ func (h *PostHandler) UnfavoritePost(c *gin.Context) {
 func (h *PostHandler) MoveFavorite(c *gin.Context) {
 	userID, _ := c.Get("userID")
 
-	postID, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	postID, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid post ID"})
 		return
@@ -577,7 +577,7 @@ func (h *PostHandler) MoveFavorite(c *gin.Context) {
 		return
 	}
 
-	if err := h.postService.MoveFavorite(userID.(uint), uint(postID), req.FolderID); err != nil {
+	if err := h.postService.MoveFavorite(userID.(int64), postID, req.FolderID); err != nil {
 		switch err {
 		case service.ErrNotFavorited:
 			c.JSON(http.StatusNotFound, gin.H{"error": "Not favorited"})
@@ -608,7 +608,7 @@ func (h *PostHandler) GetFavorites(c *gin.Context) {
 		pageSize = 10
 	}
 
-	favorites, total, err := h.postService.GetFavorites(userID.(uint), page, pageSize)
+	favorites, total, err := h.postService.GetFavorites(userID.(int64), page, pageSize)
 	if err != nil {
 		logger.Error("Failed to get favorites", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get favorites"})
@@ -642,7 +642,7 @@ func (h *PostHandler) GetFavoritesByFolder(c *gin.Context) {
 		pageSize = 10
 	}
 
-	posts, total, err := h.postService.GetFavoritesByFolder(userID.(uint), uint(folderID), page, pageSize)
+	posts, total, err := h.postService.GetFavoritesByFolder(userID.(int64), uint(folderID), page, pageSize)
 	if err != nil {
 		logger.Error("Failed to get favorites by folder", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get favorites"})
@@ -670,7 +670,7 @@ func (h *PostHandler) GetMyPosts(c *gin.Context) {
 		pageSize = 10
 	}
 
-	posts, total, err := h.postService.GetMyPosts(userID.(uint), page, pageSize)
+	posts, total, err := h.postService.GetMyPosts(userID.(int64), page, pageSize)
 	if err != nil {
 		logger.Error("Failed to get my posts", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get my posts"})

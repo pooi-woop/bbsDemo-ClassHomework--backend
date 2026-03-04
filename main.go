@@ -30,6 +30,7 @@ func main() {
 	logger.Info("Application starting", zap.String("config", "config.yaml"))
 
 	utils.InitJWT(cfg.JWT.Secret)
+	utils.InitSnowflake(1) // 1 is the worker ID, can be configured
 
 	if err := database.InitMySQL(cfg.MySQL); err != nil {
 		logger.Fatal("Failed to initialize MySQL", zap.Error(err))

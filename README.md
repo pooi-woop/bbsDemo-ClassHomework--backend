@@ -16,6 +16,7 @@
 | JWT | - | 认证令牌 |
 | Zap | v1.24.0 | 日志库 |
 | Viper | v1.15.0 | 配置管理 |
+| 雪花算法 | - | 生成唯一用户 ID |
 
 ## 项目结构
 
@@ -43,7 +44,8 @@ bbsDemo/
 │   └── post.go        # 帖子业务逻辑
 ├── utils/             # 工具函数
 │   ├── jwt.go         # JWT 工具
-│   └── hash.go        # 密码哈希工具
+│   ├── hash.go        # 密码哈希工具
+│   └── snowflake.go   # 雪花算法 ID 生成
 ├── config.yaml        # 配置文件
 ├── go.mod             # Go 模块文件
 ├── go.sum             # 依赖校验
@@ -265,6 +267,197 @@ go build
 ### 4. 自动迁移
 
 服务启动时会自动执行数据库迁移，创建所需的表结构。
+
+## 项目使用
+
+### 1. API 接口使用
+
+#### 1.1 认证流程
+
+1. **发送验证码**：
+   ```bash
+   curl -X POST http://localhost:8080/api/auth/send-code \
+     -H "Content-Type: application/json" \
+     -d '{"email": "user@example.com", "type": "register"}'
+   ```
+
+2. **注册**：
+   ```bash
+   curl -X POST http://localhost:8080/api/auth/register \
+     -H "Content-Type: application/json" \
+     -d '{"email": "user@example.com", "password": "password123", "code": "123456"}'
+   ```
+
+3. **登录**：
+   ```bash
+   curl -X POST http://localhost:8080/api/auth/login \
+     -H "Content-Type: application/json" \
+     -d '{"email": "user@example.com", "password": "password123"}'
+   ```
+
+4. **刷新令牌**：
+   ```bash
+   curl -X POST http://localhost:8080/api/auth/refresh \
+     -H "Content-Type: application/json" \
+     -d '{"refresh_token": "your_refresh_token"}'
+   ```
+
+#### 1.2 帖子操作
+
+1. **创建帖子**：
+   ```bash
+   curl -X POST http://localhost:8080/api/posts \
+     -H "Content-Type: application/json" \
+     -H "Authorization: Bearer your_access_token" \
+     -d '{"title": "Hello World", "content": "This is a test post"}'
+   ```
+
+2. **获取帖子列表**：
+   ```bash
+   curl http://localhost:8080/api/posts?page=1&page_size=10
+   ```
+
+3. **获取帖子详情**：
+   ```bash
+   curl http://localhost:8080/api/posts/1
+   ```
+
+4. **更新帖子**：
+   ```bash
+   curl -X PUT http://localhost:8080/api/posts/1 \
+     -H "Content-Type: application/json" \
+     -H "Authorization: Bearer your_access_token" \
+     -d '{"title": "Updated Title", "content": "Updated content"}'
+   ```
+
+5. **删除帖子**：
+   ```bash
+   curl -X DELETE http://localhost:8080/api/posts/1 \
+     -H "Authorization: Bearer your_access_token"
+   ```
+
+#### 1.3 评论操作
+
+1. **创建评论**：
+   ```bash
+   curl -X POST http://localhost:8080/api/comments \
+     -H "Content-Type: application/json" \
+     -H "Authorization: Bearer your_access_token" \
+     -d '{"post_id": 1, "content": "Great post!"}'
+   ```
+
+2. **获取评论**：
+   ```bash
+   curl http://localhost:8080/api/posts/1/comments?page=1&page_size=10
+   ```
+
+#### 1.4 点赞操作
+
+1. **点赞帖子**：
+   ```bash
+   curl -X POST http://localhost:8080/api/posts/1/like \
+     -H "Authorization: Bearer your_access_token"
+   ```
+
+2. **取消点赞**：
+   ```bash
+   curl -X DELETE http://localhost:8080/api/posts/1/like \
+     -H "Authorization: Bearer your_access_token"
+   ```
+
+#### 1.5 收藏操作
+
+1. **创建收藏夹**：
+   ```bash
+   curl -X POST http://localhost:8080/api/folders \
+     -H "Content-Type: application/json" \
+     -H "Authorization: Bearer your_access_token" \
+     -d '{"name": "技术文章"}'
+   ```
+
+2. **收藏帖子**：
+   ```bash
+   curl -X POST http://localhost:8080/api/favorites \
+     -H "Content-Type: application/json" \
+     -H "Authorization: Bearer your_access_token" \
+     -d '{"post_id": 1, "folder_id": 1}'
+   ```
+
+3. **获取收藏**：
+   ```bash
+   curl http://localhost:8080/api/my/favorites?page=1&page_size=10 \
+     -H "Authorization: Bearer your_access_token"
+   ```
+
+#### 1.6 个人资料操作
+
+1. **更新昵称**：
+   ```bash
+   curl -X PUT http://localhost:8080/api/profile/nickname \
+     -H "Content-Type: application/json" \
+     -H "Authorization: Bearer your_access_token" \
+     -d '{"nickname": "New Nickname"}'
+   ```
+
+2. **上传头像**：
+   ```bash
+   curl -X POST http://localhost:8080/api/profile/avatar \
+     -H "Authorization: Bearer your_access_token" \
+     -F "avatar=@/path/to/avatar.jpg"
+   ```
+
+### 2. 前端集成
+
+1. **认证状态管理**：
+   - 存储 access_token 和 refresh_token
+   - 实现 token 过期自动刷新
+   - 处理 401 错误（未授权）
+
+2. **API 调用封装**：
+   - 统一处理请求头（Authorization）
+   - 统一处理错误响应
+   - 实现请求拦截和响应拦截
+
+3. **功能模块**：
+   - 登录/注册页面
+   - 帖子列表和详情页面
+   - 评论和回复功能
+   - 个人中心（资料、收藏、拉黑）
+
+### 3. 常见问题
+
+#### 3.1 验证码相关
+- **问题**：验证码未收到
+  **解决**：检查邮箱配置是否正确，查看服务端日志
+
+- **问题**：验证码无效
+  **解决**：确认验证码是否过期，是否输入正确
+
+#### 3.2 认证相关
+- **问题**：Token 过期
+  **解决**：使用 refresh_token 刷新获取新 token
+
+- **问题**：401 错误
+  **解决**：检查 token 是否有效，是否在请求头中正确设置
+
+#### 3.3 上传相关
+- **问题**：头像上传失败
+  **解决**：检查文件大小和类型是否符合要求
+
+### 4. 开发建议
+
+1. **本地开发**：
+   - 使用 `go run main.go` 启动开发服务器
+   - 开启 Gin 的 debug 模式查看详细日志
+
+2. **测试**：
+   - 使用 Postman 或 curl 测试 API 接口
+   - 编写单元测试和集成测试
+
+3. **部署**：
+   - 配置生产环境的 config.yaml
+   - 使用 PM2 或 systemd 管理服务
+   - 配置反向代理（如 Nginx）
 
 ## 开发说明
 

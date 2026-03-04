@@ -142,7 +142,7 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 		return
 	}
 
-	if err := h.userService.Logout(userID.(uint), req.RefreshToken); err != nil {
+	if err := h.userService.Logout(userID.(int64), req.RefreshToken); err != nil {
 		logger.Error("Failed to logout", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Logout failed"})
 		return
@@ -154,7 +154,7 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 func (h *AuthHandler) LogoutAll(c *gin.Context) {
 	userID, _ := c.Get("userID")
 
-	if err := h.userService.LogoutAll(userID.(uint)); err != nil {
+	if err := h.userService.LogoutAll(userID.(int64)); err != nil {
 		logger.Error("Failed to logout all", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Logout failed"})
 		return
@@ -166,7 +166,7 @@ func (h *AuthHandler) LogoutAll(c *gin.Context) {
 func (h *AuthHandler) GetProfile(c *gin.Context) {
 	userID, _ := c.Get("userID")
 
-	user, err := h.userService.GetUserByID(userID.(uint))
+	user, err := h.userService.GetUserByID(userID.(int64))
 	if err != nil {
 		switch err {
 		case service.ErrUserNotFound:
@@ -192,7 +192,7 @@ func (h *AuthHandler) UpdateNickname(c *gin.Context) {
 		return
 	}
 
-	user, err := h.userService.UpdateNickname(userID.(uint), req.Nickname)
+	user, err := h.userService.UpdateNickname(userID.(int64), req.Nickname)
 	if err != nil {
 		switch err {
 		case service.ErrUserNotFound:
@@ -217,7 +217,7 @@ func (h *AuthHandler) UploadAvatar(c *gin.Context) {
 	}
 	defer file.Close()
 
-	avatarURL, err := h.userService.UploadAvatar(userID.(uint), header.Filename, header.Size, file)
+	avatarURL, err := h.userService.UploadAvatar(userID.(int64), header.Filename, header.Size, file)
 	if err != nil {
 		switch err {
 		case service.ErrFileTooLarge:

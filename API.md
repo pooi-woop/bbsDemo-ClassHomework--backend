@@ -56,7 +56,7 @@ Content-Type: application/json
 ```json
 {
   "user": {
-    "id": 1,
+    "id": 1234567890123456789,
     "email": "user@example.com",
     "nickname": "",
     "avatar": "",
@@ -102,7 +102,7 @@ Content-Type: application/json
   "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
   "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
   "user": {
-    "id": 1,
+    "id": 1234567890123456789,
     "email": "user@example.com",
     "nickname": "",
     "avatar": ""
@@ -234,10 +234,10 @@ Authorization: Bearer <access_token>
 ```json
 {
   "user": {
-    "id": 1,
+    "id": 1234567890123456789,
     "email": "user@example.com",
     "nickname": "User",
-    "avatar": "/uploads/avatar_1_1234567890.jpg",
+    "avatar": "/uploads/avatar_1234567890123456789_1234567890.jpg",
     "is_verified": true,
     "last_login_at": "2023-01-01T00:00:00Z",
     "last_login_ip": "127.0.0.1"
@@ -272,10 +272,10 @@ Authorization: Bearer <access_token>
 ```json
 {
   "user": {
-    "id": 1,
+    "id": 1234567890123456789,
     "email": "user@example.com",
     "nickname": "New Nickname",
-    "avatar": "/uploads/avatar_1_1234567890.jpg"
+    "avatar": "/uploads/avatar_1234567890123456789_1234567890.jpg"
   }
 }
 ```
@@ -309,7 +309,7 @@ Authorization: Bearer <access_token>
 ```json
 {
   "message": "Avatar uploaded successfully",
-  "avatar": "/uploads/avatar_1_1234567890.jpg"
+  "avatar": "/uploads/avatar_1234567890123456789_1234567890.jpg"
 }
 ```
 
@@ -344,14 +344,14 @@ GET /api/posts?page=1&page_size=10
 {
   "posts": [
     {
-      "id": 1,
+      "id": 1234567890123456789,
       "user_id": 1,
       "title": "Hello World",
       "content": "This is a test post",
       "views": 10,
       "created_at": "2023-01-01T00:00:00Z",
       "user": {
-        "id": 1,
+        "id": 1234567890123456789,
         "email": "user@example.com",
         "nickname": "User"
       }
@@ -388,7 +388,7 @@ GET /api/posts/1
   "views": 11,
   "created_at": "2023-01-01T00:00:00Z",
   "user": {
-    "id": 1,
+    "id": 1234567890123456789,
     "email": "user@example.com",
     "nickname": "User"
   }
@@ -527,14 +527,14 @@ GET /api/posts/1/comments?page=1&page_size=10
 {
   "comments": [
     {
-      "id": 1,
+      "id": 1234567890123456789,
       "post_id": 1,
       "comment_id": null,
       "user_id": 1,
       "content": "Great post!",
       "created_at": "2023-01-01T00:00:00Z",
       "user": {
-        "id": 1,
+        "id": 1234567890123456789,
         "email": "user@example.com",
         "nickname": "User"
       }
@@ -782,7 +782,7 @@ Authorization: Bearer <access_token>
 {
   "folders": [
     {
-      "id": 1,
+      "id": 1234567890123456789,
       "user_id": 1,
       "name": "默认收藏夹",
       "is_default": true
@@ -1018,13 +1018,13 @@ Authorization: Bearer <access_token>
   "favorites": [
     {
       "post": {
-        "id": 1,
+        "id": 1234567890123456789,
         "title": "Hello World",
         "content": "This is a test post",
         "views": 10,
         "created_at": "2023-01-01T00:00:00Z",
         "user": {
-          "id": 1,
+          "id": 1234567890123456789,
           "email": "user@example.com",
           "nickname": "User"
         }
@@ -1061,13 +1061,13 @@ Authorization: Bearer <access_token>
   "favorites": [
     {
       "post": {
-        "id": 1,
+        "id": 1234567890123456789,
         "title": "Hello World",
         "content": "This is a test post",
         "views": 10,
         "created_at": "2023-01-01T00:00:00Z",
         "user": {
-          "id": 1,
+          "id": 1234567890123456789,
           "email": "user@example.com",
           "nickname": "User"
         }
@@ -1195,7 +1195,7 @@ Authorization: Bearer <access_token>
 {
   "posts": [
     {
-      "id": 1,
+      "id": 1234567890123456789,
       "user_id": 1,
       "title": "Hello World",
       "content": "This is a test post",

@@ -160,6 +160,7 @@ func (s *UserService) Register(req RegisterRequest) (*models.User, error) {
 	}
 
 	user := models.User{
+		ID:         utils.GenerateID(),
 		Email:      req.Email,
 		Password:   hashedPassword,
 		Nickname:   "",
@@ -171,7 +172,7 @@ func (s *UserService) Register(req RegisterRequest) (*models.User, error) {
 		return nil, err
 	}
 
-	logger.Info("User registered", zap.Uint("user_id", user.ID), zap.String("email", user.Email))
+	logger.Info("User registered", zap.Int64("user_id", user.ID), zap.String("email", user.Email))
 	return &user, nil
 }
 
@@ -215,7 +216,7 @@ func (s *UserService) Login(req LoginRequest, ip, userAgent string) (*utils.Toke
 	user.LastLoginIP = ip
 	database.DB.Save(&user)
 
-	logger.Info("User logged in", zap.Uint("user_id", user.ID), zap.String("email", user.Email))
+	logger.Info("User logged in", zap.Int64("user_id", user.ID), zap.String("email", user.Email))
 	return tokenPair, nil
 }
 
@@ -259,11 +260,11 @@ func (s *UserService) RefreshToken(refreshToken string, ip, userAgent string) (*
 		return nil, err
 	}
 
-	logger.Info("Token refreshed", zap.Uint("user_id", claims.UserID))
+	logger.Info("Token refreshed", zap.Int64("user_id", claims.UserID))
 	return tokenPair, nil
 }
 
-func (s *UserService) Logout(userID uint, refreshToken string) error {
+func (s *UserService) Logout(userID int64, refreshToken string) error {
 	if err := database.DB.Model(&models.RefreshToken{}).
 		Where("user_id = ? AND token = ?", userID, refreshToken).
 		Update("is_revoked", true).Error; err != nil {
@@ -271,11 +272,11 @@ func (s *UserService) Logout(userID uint, refreshToken string) error {
 		return err
 	}
 
-	logger.Info("User logged out", zap.Uint("user_id", userID))
+	logger.Info("User logged out", zap.Int64("user_id", userID))
 	return nil
 }
 
-func (s *UserService) LogoutAll(userID uint) error {
+func (s *UserService) LogoutAll(userID int64) error {
 	if err := database.DB.Model(&models.RefreshToken{}).
 		Where("user_id = ?", userID).
 		Update("is_revoked", true).Error; err != nil {
@@ -283,11 +284,11 @@ func (s *UserService) LogoutAll(userID uint) error {
 		return err
 	}
 
-	logger.Info("User logged out from all devices", zap.Uint("user_id", userID))
+	logger.Info("User logged out from all devices", zap.Int64("user_id", userID))
 	return nil
 }
 
-func (s *UserService) GetUserByID(userID uint) (*models.User, error) {
+func (s *UserService) GetUserByID(userID int64) (*models.User, error) {
 	var user models.User
 	if err := database.DB.First(&user, userID).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -298,7 +299,7 @@ func (s *UserService) GetUserByID(userID uint) (*models.User, error) {
 	return &user, nil
 }
 
-func (s *UserService) UpdateNickname(userID uint, nickname string) (*models.User, error) {
+func (s *UserService) UpdateNickname(userID int64, nickname string) (*models.User, error) {
 	var user models.User
 	if err := database.DB.First(&user, userID).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -313,11 +314,11 @@ func (s *UserService) UpdateNickname(userID uint, nickname string) (*models.User
 		return nil, err
 	}
 
-	logger.Info("Nickname updated", zap.Uint("user_id", user.ID))
+	logger.Info("Nickname updated", zap.Int64("user_id", user.ID))
 	return &user, nil
 }
 
-func (s *UserService) UploadAvatar(userID uint, fileName string, fileSize int64, fileContent io.Reader) (string, error) {
+func (s *UserService) UploadAvatar(userID int64, fileName string, fileSize int64, fileContent io.Reader) (string, error) {
 	if fileSize > s.uploadConfig.MaxSize {
 		return "", ErrFileTooLarge
 	}
@@ -373,6 +374,6 @@ func (s *UserService) UploadAvatar(userID uint, fileName string, fileSize int64,
 		return "", err
 	}
 
-	logger.Info("Avatar uploaded", zap.Uint("user_id", userID), zap.String("avatar", avatarURL))
+	logger.Info("Avatar uploaded", zap.Int64("user_id", userID), zap.String("avatar", avatarURL))
 	return avatarURL, nil
 }

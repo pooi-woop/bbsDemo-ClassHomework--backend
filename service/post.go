@@ -4,6 +4,7 @@ import (
 	"bbsDemo/database"
 	"bbsDemo/logger"
 	"bbsDemo/models"
+	"bbsDemo/utils"
 	"errors"
 
 	"go.uber.org/zap"
@@ -64,12 +65,13 @@ type UpdateFolderRequest struct {
 }
 
 type FavoritePostRequest struct {
-	PostID   uint `json:"post_id" binding:"required"`
-	FolderID uint `json:"folder_id" binding:"required"`
+	PostID   int64 `json:"post_id" binding:"required"`
+	FolderID uint  `json:"folder_id" binding:"required"`
 }
 
-func (s *PostService) CreatePost(userID uint, req CreatePostRequest) (*models.Post, error) {
+func (s *PostService) CreatePost(userID int64, req CreatePostRequest) (*models.Post, error) {
 	post := models.Post{
+		ID:      utils.GenerateID(),
 		UserID:  userID,
 		Title:   req.Title,
 		Content: req.Content,
@@ -81,11 +83,11 @@ func (s *PostService) CreatePost(userID uint, req CreatePostRequest) (*models.Po
 		return nil, err
 	}
 
-	logger.Info("Post created", zap.Uint("post_id", post.ID), zap.Uint("user_id", userID))
+	logger.Info("Post created", zap.Int64("post_id", post.ID), zap.Int64("user_id", userID))
 	return &post, nil
 }
 
-func (s *PostService) UpdatePost(userID, postID uint, req UpdatePostRequest) (*models.Post, error) {
+func (s *PostService) UpdatePost(userID int64, postID int64, req UpdatePostRequest) (*models.Post, error) {
 	var post models.Post
 	if err := database.DB.First(&post, postID).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -110,11 +112,11 @@ func (s *PostService) UpdatePost(userID, postID uint, req UpdatePostRequest) (*m
 		return nil, err
 	}
 
-	logger.Info("Post updated", zap.Uint("post_id", post.ID))
+	logger.Info("Post updated", zap.Int64("post_id", post.ID))
 	return &post, nil
 }
 
-func (s *PostService) DeletePost(userID, postID uint) error {
+func (s *PostService) DeletePost(userID int64, postID int64) error {
 	var post models.Post
 	if err := database.DB.First(&post, postID).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -132,11 +134,11 @@ func (s *PostService) DeletePost(userID, postID uint) error {
 		return err
 	}
 
-	logger.Info("Post deleted", zap.Uint("post_id", post.ID))
+	logger.Info("Post deleted", zap.Int64("post_id", post.ID))
 	return nil
 }
 
-func (s *PostService) GetPost(postID uint) (*models.Post, error) {
+func (s *PostService) GetPost(postID int64) (*models.Post, error) {
 	var post models.Post
 	if err := database.DB.Preload("User").First(&post, postID).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -173,7 +175,7 @@ func (s *PostService) ListPosts(page, pageSize int) ([]models.Post, int64, error
 	return posts, total, nil
 }
 
-func (s *PostService) CreateComment(userID uint, req CreateCommentRequest) (*models.Comment, error) {
+func (s *PostService) CreateComment(userID int64, req CreateCommentRequest) (*models.Comment, error) {
 	if req.PostID == nil && req.CommentID == nil {
 		return nil, errors.New("post_id or comment_id is required")
 	}
@@ -190,11 +192,11 @@ func (s *PostService) CreateComment(userID uint, req CreateCommentRequest) (*mod
 		return nil, err
 	}
 
-	logger.Info("Comment created", zap.Uint("comment_id", comment.ID), zap.Uint("user_id", userID))
+	logger.Info("Comment created", zap.Uint("comment_id", comment.ID), zap.Int64("user_id", userID))
 	return &comment, nil
 }
 
-func (s *PostService) DeleteComment(userID, commentID uint) error {
+func (s *PostService) DeleteComment(userID int64, commentID uint) error {
 	var comment models.Comment
 	if err := database.DB.First(&comment, commentID).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -261,7 +263,7 @@ func (s *PostService) GetReplies(commentID uint, page, pageSize int) ([]models.C
 	return comments, total, nil
 }
 
-func (s *PostService) LikePost(userID, postID uint) error {
+func (s *PostService) LikePost(userID int64, postID int64) error {
 	var existingLike models.Like
 	if err := database.DB.Where("user_id = ? AND post_id = ?", userID, postID).First(&existingLike).Error; err == nil {
 		return ErrAlreadyLiked
@@ -281,11 +283,11 @@ func (s *PostService) LikePost(userID, postID uint) error {
 		logger.Error("Failed to push like count to queue", zap.Error(err))
 	}
 
-	logger.Info("Post liked", zap.Uint("post_id", postID), zap.Uint("user_id", userID))
+	logger.Info("Post liked", zap.Int64("post_id", postID), zap.Int64("user_id", userID))
 	return nil
 }
 
-func (s *PostService) UnlikePost(userID, postID uint) error {
+func (s *PostService) UnlikePost(userID int64, postID int64) error {
 	var like models.Like
 	if err := database.DB.Where("user_id = ? AND post_id = ?", userID, postID).First(&like).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -303,11 +305,11 @@ func (s *PostService) UnlikePost(userID, postID uint) error {
 		logger.Error("Failed to push unlike count to queue", zap.Error(err))
 	}
 
-	logger.Info("Post unliked", zap.Uint("post_id", postID), zap.Uint("user_id", userID))
+	logger.Info("Post unliked", zap.Int64("post_id", postID), zap.Int64("user_id", userID))
 	return nil
 }
 
-func (s *PostService) LikeComment(userID, commentID uint) error {
+func (s *PostService) LikeComment(userID int64, commentID uint) error {
 	var existingLike models.Like
 	if err := database.DB.Where("user_id = ? AND comment_id = ?", userID, commentID).First(&existingLike).Error; err == nil {
 		return ErrAlreadyLiked
@@ -327,11 +329,11 @@ func (s *PostService) LikeComment(userID, commentID uint) error {
 		logger.Error("Failed to push like count to queue", zap.Error(err))
 	}
 
-	logger.Info("Comment liked", zap.Uint("comment_id", commentID), zap.Uint("user_id", userID))
+	logger.Info("Comment liked", zap.Uint("comment_id", commentID), zap.Int64("user_id", userID))
 	return nil
 }
 
-func (s *PostService) UnlikeComment(userID, commentID uint) error {
+func (s *PostService) UnlikeComment(userID int64, commentID uint) error {
 	var like models.Like
 	if err := database.DB.Where("user_id = ? AND comment_id = ?", userID, commentID).First(&like).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -349,11 +351,11 @@ func (s *PostService) UnlikeComment(userID, commentID uint) error {
 		logger.Error("Failed to push unlike count to queue", zap.Error(err))
 	}
 
-	logger.Info("Comment unliked", zap.Uint("comment_id", commentID), zap.Uint("user_id", userID))
+	logger.Info("Comment unliked", zap.Uint("comment_id", commentID), zap.Int64("user_id", userID))
 	return nil
 }
 
-func (s *PostService) BlockUser(userID, blockedID uint) error {
+func (s *PostService) BlockUser(userID, blockedID int64) error {
 	if userID == blockedID {
 		return ErrCannotBlockSelf
 	}
@@ -373,11 +375,11 @@ func (s *PostService) BlockUser(userID, blockedID uint) error {
 		return err
 	}
 
-	logger.Info("User blocked", zap.Uint("user_id", userID), zap.Uint("blocked_id", blockedID))
+	logger.Info("User blocked", zap.Int64("user_id", userID), zap.Int64("blocked_id", blockedID))
 	return nil
 }
 
-func (s *PostService) UnblockUser(userID, blockedID uint) error {
+func (s *PostService) UnblockUser(userID, blockedID int64) error {
 	var block models.Block
 	if err := database.DB.Where("user_id = ? AND blocked_id = ?", userID, blockedID).First(&block).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -391,11 +393,11 @@ func (s *PostService) UnblockUser(userID, blockedID uint) error {
 		return err
 	}
 
-	logger.Info("User unblocked", zap.Uint("user_id", userID), zap.Uint("blocked_id", blockedID))
+	logger.Info("User unblocked", zap.Int64("user_id", userID), zap.Int64("blocked_id", blockedID))
 	return nil
 }
 
-func (s *PostService) GetBlockedUsers(userID uint, page, pageSize int) ([]models.User, int64, error) {
+func (s *PostService) GetBlockedUsers(userID int64, page, pageSize int) ([]models.User, int64, error) {
 	var users []models.User
 	var total int64
 
@@ -416,7 +418,7 @@ func (s *PostService) GetBlockedUsers(userID uint, page, pageSize int) ([]models
 	return users, total, nil
 }
 
-func (s *PostService) CreateFolder(userID uint, req CreateFolderRequest) (*models.FavoriteFolder, error) {
+func (s *PostService) CreateFolder(userID int64, req CreateFolderRequest) (*models.FavoriteFolder, error) {
 	var existingFolder models.FavoriteFolder
 	if err := database.DB.Where("user_id = ? AND name = ?", userID, req.Name).First(&existingFolder).Error; err == nil {
 		return nil, ErrFolderExists
@@ -432,11 +434,11 @@ func (s *PostService) CreateFolder(userID uint, req CreateFolderRequest) (*model
 		return nil, err
 	}
 
-	logger.Info("Folder created", zap.Uint("folder_id", folder.ID), zap.Uint("user_id", userID))
+	logger.Info("Folder created", zap.Uint("folder_id", folder.ID), zap.Int64("user_id", userID))
 	return &folder, nil
 }
 
-func (s *PostService) UpdateFolder(userID, folderID uint, req UpdateFolderRequest) (*models.FavoriteFolder, error) {
+func (s *PostService) UpdateFolder(userID int64, folderID uint, req UpdateFolderRequest) (*models.FavoriteFolder, error) {
 	var folder models.FavoriteFolder
 	if err := database.DB.First(&folder, folderID).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -464,7 +466,7 @@ func (s *PostService) UpdateFolder(userID, folderID uint, req UpdateFolderReques
 	return &folder, nil
 }
 
-func (s *PostService) DeleteFolder(userID, folderID uint) error {
+func (s *PostService) DeleteFolder(userID int64, folderID uint) error {
 	var folder models.FavoriteFolder
 	if err := database.DB.First(&folder, folderID).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -490,7 +492,7 @@ func (s *PostService) DeleteFolder(userID, folderID uint) error {
 	return nil
 }
 
-func (s *PostService) GetFolders(userID uint) ([]models.FavoriteFolder, error) {
+func (s *PostService) GetFolders(userID int64) ([]models.FavoriteFolder, error) {
 	var folders []models.FavoriteFolder
 	if err := database.DB.Where("user_id = ?", userID).Order("is_default DESC, created_at ASC").Find(&folders).Error; err != nil {
 		return nil, err
@@ -498,7 +500,7 @@ func (s *PostService) GetFolders(userID uint) ([]models.FavoriteFolder, error) {
 	return folders, nil
 }
 
-func (s *PostService) GetOrCreateDefaultFolder(userID uint) (*models.FavoriteFolder, error) {
+func (s *PostService) GetOrCreateDefaultFolder(userID int64) (*models.FavoriteFolder, error) {
 	var folder models.FavoriteFolder
 	if err := database.DB.Where("user_id = ? AND is_default = ?", userID, true).First(&folder).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -510,7 +512,7 @@ func (s *PostService) GetOrCreateDefaultFolder(userID uint) (*models.FavoriteFol
 			if err := database.DB.Create(&folder).Error; err != nil {
 				return nil, err
 			}
-			logger.Info("Default folder created", zap.Uint("user_id", userID))
+			logger.Info("Default folder created", zap.Int64("user_id", userID))
 			return &folder, nil
 		}
 		return nil, err
@@ -518,7 +520,7 @@ func (s *PostService) GetOrCreateDefaultFolder(userID uint) (*models.FavoriteFol
 	return &folder, nil
 }
 
-func (s *PostService) FavoritePost(userID uint, req FavoritePostRequest) error {
+func (s *PostService) FavoritePost(userID int64, req FavoritePostRequest) error {
 	var folder models.FavoriteFolder
 	if err := database.DB.First(&folder, req.FolderID).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -547,11 +549,11 @@ func (s *PostService) FavoritePost(userID uint, req FavoritePostRequest) error {
 		return err
 	}
 
-	logger.Info("Post favorited", zap.Uint("post_id", req.PostID), zap.Uint("user_id", userID), zap.Uint("folder_id", req.FolderID))
+	logger.Info("Post favorited", zap.Int64("post_id", req.PostID), zap.Int64("user_id", userID), zap.Uint("folder_id", req.FolderID))
 	return nil
 }
 
-func (s *PostService) UnfavoritePost(userID, postID uint) error {
+func (s *PostService) UnfavoritePost(userID int64, postID int64) error {
 	var favorite models.Favorite
 	if err := database.DB.Where("user_id = ? AND post_id = ?", userID, postID).First(&favorite).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -565,11 +567,11 @@ func (s *PostService) UnfavoritePost(userID, postID uint) error {
 		return err
 	}
 
-	logger.Info("Post unfavorited", zap.Uint("post_id", postID), zap.Uint("user_id", userID))
+	logger.Info("Post unfavorited", zap.Int64("post_id", postID), zap.Int64("user_id", userID))
 	return nil
 }
 
-func (s *PostService) MoveFavorite(userID, postID, folderID uint) error {
+func (s *PostService) MoveFavorite(userID int64, postID int64, folderID uint) error {
 	var favorite models.Favorite
 	if err := database.DB.Where("user_id = ? AND post_id = ?", userID, postID).First(&favorite).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -596,11 +598,11 @@ func (s *PostService) MoveFavorite(userID, postID, folderID uint) error {
 		return err
 	}
 
-	logger.Info("Favorite moved", zap.Uint("post_id", postID), zap.Uint("folder_id", folderID))
+	logger.Info("Favorite moved", zap.Int64("post_id", postID), zap.Uint("folder_id", folderID))
 	return nil
 }
 
-func (s *PostService) GetFavorites(userID uint, page, pageSize int) ([]FavoriteWithFolder, int64, error) {
+func (s *PostService) GetFavorites(userID int64, page, pageSize int) ([]FavoriteWithFolder, int64, error) {
 	var favorites []models.Favorite
 	var total int64
 
@@ -634,7 +636,7 @@ func (s *PostService) GetFavorites(userID uint, page, pageSize int) ([]FavoriteW
 	return result, total, nil
 }
 
-func (s *PostService) GetFavoritesByFolder(userID, folderID uint, page, pageSize int) ([]models.Post, int64, error) {
+func (s *PostService) GetFavoritesByFolder(userID int64, folderID uint, page, pageSize int) ([]models.Post, int64, error) {
 	var posts []models.Post
 	var total int64
 
@@ -659,7 +661,7 @@ func (s *PostService) GetFavoritesByFolder(userID, folderID uint, page, pageSize
 	return posts, total, nil
 }
 
-func (s *PostService) GetMyPosts(userID uint, page, pageSize int) ([]models.Post, int64, error) {
+func (s *PostService) GetMyPosts(userID int64, page, pageSize int) ([]models.Post, int64, error) {
 	var posts []models.Post
 	var total int64
 

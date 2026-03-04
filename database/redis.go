@@ -36,12 +36,12 @@ type EmailMessage struct {
 }
 
 type ViewCountMessage struct {
-	PostID uint `json:"post_id"`
+	PostID int64 `json:"post_id"`
 }
 
 type LikeCountMessage struct {
-	PostID    uint `json:"post_id,omitempty"`
-	CommentID uint `json:"comment_id,omitempty"`
+	PostID    int64  `json:"post_id,omitempty"`
+	CommentID uint   `json:"comment_id,omitempty"`
 	Action    string `json:"action"`
 }
 
@@ -134,14 +134,14 @@ func PushEmail(to, subject, body string) error {
 	return PushMessage(QueueKeyEmail, email)
 }
 
-func PushViewCount(postID uint) error {
+func PushViewCount(postID int64) error {
 	view := ViewCountMessage{
 		PostID: postID,
 	}
 	return PushMessage(QueueKeyViewCount, view)
 }
 
-func PushLikeCount(postID, commentID uint, action string) error {
+func PushLikeCount(postID int64, commentID uint, action string) error {
 	like := LikeCountMessage{
 		PostID:    postID,
 		CommentID: commentID,
