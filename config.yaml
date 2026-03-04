@@ -1,0 +1,27 @@
+mysql:
+  host: localhost
+  port: 3306
+  user: root
+  password: qweasdzxc
+  database: bbs_demo
+
+server:
+  port: 8080
+
+logger:
+  level: info
+  max_size: 100
+  max_backups: 3
+  max_age: 30
+  compress: false
+  output_path: logs
+
+jwt:
+  secret: jwtkey!!!!!!!!!OHYEAH!OHYEAH!OHYEAH!
+
+email:
+  host: smtp.example.com
+  port: 587
+  username: your-email@example.com
+  password: your-email-password
+  from: your-email@example.com

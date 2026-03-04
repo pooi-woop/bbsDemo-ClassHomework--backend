@@ -1,0 +1,75 @@
+package config
+
+import (
+	"fmt"
+
+	"github.com/spf13/viper"
+)
+
+type Config struct {
+	MySQL  MySQLConfig  `mapstructure:"mysql"`
+	Server ServerConfig `mapstructure:"server"`
+	Logger LoggerConfig `mapstructure:"logger"`
+	JWT    JWTConfig    `mapstructure:"jwt"`
+	Email  EmailConfig  `mapstructure:"email"`
+	Upload UploadConfig `mapstructure:"upload"`
+}
+
+type MySQLConfig struct {
+	Host     string `mapstructure:"host"`
+	Port     int    `mapstructure:"port"`
+	User     string `mapstructure:"user"`
+	Password string `mapstructure:"password"`
+	Database string `mapstructure:"database"`
+}
+
+type ServerConfig struct {
+	Port int `mapstructure:"port"`
+}
+
+type LoggerConfig struct {
+	Level      string `mapstructure:"level"`
+	MaxSize    int    `mapstructure:"max_size"`
+	MaxBackups int    `mapstructure:"max_backups"`
+	MaxAge     int    `mapstructure:"max_age"`
+	Compress   bool   `mapstructure:"compress"`
+	OutputPath string `mapstructure:"output_path"`
+}
+
+type JWTConfig struct {
+	Secret string `mapstructure:"secret"`
+}
+
+type EmailConfig struct {
+	Host     string `mapstructure:"host"`
+	Port     int    `mapstructure:"port"`
+	Username string `mapstructure:"username"`
+	Password string `mapstructure:"password"`
+	From     string `mapstructure:"from"`
+}
+
+type UploadConfig struct {
+	Path       string `mapstructure:"path"`
+	MaxSize    int64  `mapstructure:"max_size"`
+	AllowedExt string `mapstructure:"allowed_ext"`
+}
+
+func LoadConfig(configPath string) (*Config, error) {
+	viper.SetConfigFile(configPath)
+	viper.SetConfigType("yaml")
+
+	viper.SetDefault("upload.path", "./uploads")
+	viper.SetDefault("upload.max_size", 5242880)
+	viper.SetDefault("upload.allowed_ext", ".jpg,.jpeg,.png,.gif,.webp")
+
+	if err := viper.ReadInConfig(); err != nil {
+		return nil, fmt.Errorf("failed to read config file: %w", err)
+	}
+
+	var cfg Config
+	if err := viper.Unmarshal(&cfg); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal config: %w", err)
+	}
+
+	return &cfg, nil
+}
