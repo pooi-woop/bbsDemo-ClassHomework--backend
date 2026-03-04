@@ -12,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"go.uber.org/zap"
@@ -31,15 +32,45 @@ var (
 	ErrFileTooLarge     = errors.New("file too large")
 )
 
+type verificationCode struct {
+	Code      string
+	Type      string
+	ExpiresAt time.Time
+	IsUsed    bool
+}
+
 type UserService struct {
 	emailConfig  config.EmailConfig
 	uploadConfig config.UploadConfig
+	codes        map[string]verificationCode
+	codesMutex   sync.RWMutex
 }
 
 func NewUserService(emailConfig config.EmailConfig, uploadConfig config.UploadConfig) *UserService {
-	return &UserService{
+	service := &UserService{
 		emailConfig:  emailConfig,
 		uploadConfig: uploadConfig,
+		codes:        make(map[string]verificationCode),
+	}
+
+	// 启动定时清理过期验证码的协程
+	go service.cleanupExpiredCodes()
+
+	return service
+}
+
+func (s *UserService) cleanupExpiredCodes() {
+	ticker := time.NewTicker(time.Minute)
+	defer ticker.Stop()
+
+	for range ticker.C {
+		s.codesMutex.Lock()
+		for key, code := range s.codes {
+			if time.Now().After(code.ExpiresAt) || code.IsUsed {
+				delete(s.codes, key)
+			}
+		}
+		s.codesMutex.Unlock()
 	}
 }
 
@@ -68,17 +99,28 @@ func (s *UserService) SendVerificationCode(req SendCodeRequest) error {
 	code := utils.GenerateVerificationCode()
 	expiresAt := time.Now().Add(10 * time.Minute)
 
-	verificationCode := models.VerificationCode{
-		Email:     req.Email,
+	// 检查是否有未使用且未过期的验证码
+	s.codesMutex.RLock()
+	for key, existingCode := range s.codes {
+		if strings.Contains(key, req.Email) && existingCode.Type == req.Type && !existingCode.IsUsed && time.Now().Before(existingCode.ExpiresAt) {
+			s.codesMutex.RUnlock()
+			return errors.New("verification code already sent")
+		}
+	}
+	s.codesMutex.RUnlock()
+
+	// 生成唯一键
+	key := fmt.Sprintf("%s:%s", req.Email, req.Type)
+
+	// 存储验证码到内存
+	s.codesMutex.Lock()
+	s.codes[key] = verificationCode{
 		Code:      code,
 		Type:      req.Type,
 		ExpiresAt: expiresAt,
+		IsUsed:    false,
 	}
-
-	if err := database.DB.Create(&verificationCode).Error; err != nil {
-		logger.Error("Failed to save verification code", zap.Error(err))
-		return err
-	}
+	s.codesMutex.Unlock()
 
 	subject := "Verification Code"
 	body := fmt.Sprintf("Your verification code is: %s. It will expire in 10 minutes.", code)
@@ -92,20 +134,24 @@ func (s *UserService) SendVerificationCode(req SendCodeRequest) error {
 }
 
 func (s *UserService) Register(req RegisterRequest) (*models.User, error) {
-	var code models.VerificationCode
-	if err := database.DB.Where("email = ? AND code = ? AND type = ? AND is_used = ?",
-		req.Email, req.Code, "register", false).
-		Order("created_at DESC").
-		First(&code).Error; err != nil {
+	key := fmt.Sprintf("%s:%s", req.Email, "register")
+
+	s.codesMutex.Lock()
+	code, exists := s.codes[key]
+	if !exists || code.Code != req.Code || code.IsUsed {
+		s.codesMutex.Unlock()
 		return nil, ErrInvalidCode
 	}
 
 	if time.Now().After(code.ExpiresAt) {
+		s.codesMutex.Unlock()
 		return nil, ErrCodeExpired
 	}
 
+	// 标记为已使用
 	code.IsUsed = true
-	database.DB.Save(&code)
+	s.codes[key] = code
+	s.codesMutex.Unlock()
 
 	hashedPassword, err := utils.HashPassword(req.Password)
 	if err != nil {

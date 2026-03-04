@@ -66,7 +66,6 @@ func CloseMySQL() error {
 func AutoMigrate() error {
 	if err := DB.AutoMigrate(
 		&models.User{},
-		&models.VerificationCode{},
 		&models.RefreshToken{},
 		&models.Post{},
 		&models.Comment{},
