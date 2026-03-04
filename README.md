@@ -32,6 +32,9 @@ bbsDemo/
 │   └── post.go        # 帖子相关接口
 ├── logger/            # 日志管理
 │   └── logger.go      # Zap 日志初始化
+├── middleware/        # 中间件
+│   ├── auth.go        # 认证中间件
+│   └── admin.go       # 管理员权限中间件
 ├── models/            # 数据模型
 │   ├── user.go        # 用户相关模型
 │   └── post.go        # 帖子相关模型
@@ -188,6 +191,27 @@ bbsDemo/
 **关键文件：**
 - `database/redis.go` - 消息队列操作
 - `queue/worker.go` - 消息消费者
+
+### 10. 管理员系统
+
+**实现方式：**
+- 用户模型添加 `is_admin` 字段标识管理员身份
+- 使用 `AuthRequired` 中间件验证用户登录状态
+- 使用 `AdminRequired` 中间件验证管理员权限
+- 支持管理员删除帖子、删除评论、禁言/解禁用户
+- 被禁言用户无法登录系统
+
+**关键文件：**
+- `middleware/auth.go` - 认证中间件
+- `middleware/admin.go` - 管理员权限中间件
+- `service/post.go` - 管理员业务逻辑
+- `handler/post.go` - 管理员接口
+
+**管理员权限说明：**
+- 管理员可以删除任意帖子（不受用户限制）
+- 管理员可以删除任意评论（不受用户限制）
+- 管理员可以禁言/解禁任意用户
+- 被禁言用户（status=0）无法登录系统
 
 ## 配置说明
 

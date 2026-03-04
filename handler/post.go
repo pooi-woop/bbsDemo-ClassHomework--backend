@@ -180,6 +180,92 @@ func (h *PostHandler) DeleteComment(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Comment deleted"})
 }
 
+// AdminDeletePost 管理员删除帖子
+func (h *PostHandler) AdminDeletePost(c *gin.Context) {
+	postID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid post ID"})
+		return
+	}
+
+	if err := h.postService.AdminDeletePost(postID); err != nil {
+		switch err {
+		case service.ErrPostNotFound:
+			c.JSON(http.StatusNotFound, gin.H{"error": "Post not found"})
+		default:
+			logger.Error("Failed to delete post", zap.Error(err))
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete post"})
+		}
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Post deleted"})
+}
+
+// AdminDeleteComment 管理员删除评论
+func (h *PostHandler) AdminDeleteComment(c *gin.Context) {
+	commentID, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid comment ID"})
+		return
+	}
+
+	if err := h.postService.AdminDeleteComment(uint(commentID)); err != nil {
+		switch err {
+		case service.ErrCommentNotFound:
+			c.JSON(http.StatusNotFound, gin.H{"error": "Comment not found"})
+		default:
+			logger.Error("Failed to delete comment", zap.Error(err))
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete comment"})
+		}
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Comment deleted"})
+}
+
+// BanUser 禁言用户
+func (h *PostHandler) BanUser(c *gin.Context) {
+	userID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+		return
+	}
+
+	if err := h.postService.BanUser(userID); err != nil {
+		if err.Error() == "user not found" {
+			c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+		} else {
+			logger.Error("Failed to ban user", zap.Error(err))
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to ban user"})
+		}
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "User banned"})
+}
+
+// UnbanUser 解除禁言
+func (h *PostHandler) UnbanUser(c *gin.Context) {
+	userID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+		return
+	}
+
+	if err := h.postService.UnbanUser(userID); err != nil {
+		if err.Error() == "user not found" {
+			c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+		} else {
+			logger.Error("Failed to unban user", zap.Error(err))
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to unban user"})
+		}
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "User unbanned"})
+}
+
 func (h *PostHandler) GetComments(c *gin.Context) {
 	postID, err := strconv.ParseUint(c.Param("id"), 10, 32)
 	if err != nil {

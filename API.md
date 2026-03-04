@@ -99,13 +99,10 @@ Content-Type: application/json
 **响应：**
 ```json
 {
-  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "user": {
-    "id": 1234567890123456789,
-    "email": "user@example.com",
-    "nickname": "",
-    "avatar": ""
+  "message": "Login successful",
+  "tokens": {
+    "access_token": "eyJhbGciOiJIUzI1NiIs...",
+    "refresh_token": "eyJhbGciOiJIUzI1NiIs..."
   }
 }
 ```
@@ -115,17 +112,15 @@ Content-Type: application/json
 |--------|---------|------|
 | 400 | `{"error": "email is required"}` | 邮箱不能为空 |
 | 400 | `{"error": "password is required"}` | 密码不能为空 |
-| 400 | `{"error": "invalid email format"}` | 邮箱格式错误 |
-| 401 | `{"error": "user not found"}` | 用户不存在 |
-| 401 | `{"error": "invalid password"}` | 密码错误 |
-| 401 | `{"error": "email not verified"}` | 邮箱未验证 |
-| 500 | `{"error": "Failed to generate tokens"}` | 令牌生成失败 |
-| 500 | `{"error": "Failed to save refresh token"}` | 刷新令牌保存失败 |
+| 401 | `{"error": "Invalid email or password"}` | 邮箱或密码错误 |
+| 403 | `{"error": "Email not verified"}` | 邮箱未验证 |
+| 403 | `{"error": "account is banned"}` | 账号被禁言 |
+| 500 | `{"error": "Login failed"}` | 登录失败 |
 
 **测试用例：**
 1. 正常登录：`{"email": "user@example.com", "password": "password123"}`
-2. 邮箱不存在：`{"email": "nonexistent@example.com", "password": "password123"}`
-3. 密码错误：`{"email": "user@example.com", "password": "wrongpassword"}`
+2. 密码错误：`{"email": "user@example.com", "password": "wrongpassword"}`
+3. 账号被禁言：使用被禁言的账号登录
 
 ### 1.4 刷新令牌
 
@@ -135,15 +130,18 @@ POST /api/auth/refresh
 Content-Type: application/json
 
 {
-  "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+  "refresh_token": "eyJhbGciOiJIUzI1NiIs..."
 }
 ```
 
 **响应：**
 ```json
 {
-  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+  "message": "Token refreshed",
+  "tokens": {
+    "access_token": "eyJhbGciOiJIUzI1NiIs...",
+    "refresh_token": "eyJhbGciOiJIUzI1NiIs..."
+  }
 }
 ```
 
@@ -151,17 +149,16 @@ Content-Type: application/json
 | 状态码 | 错误信息 | 说明 |
 |--------|---------|------|
 | 400 | `{"error": "refresh_token is required"}` | 刷新令牌不能为空 |
-| 401 | `{"error": "invalid token"}` | 令牌无效 |
-| 401 | `{"error": "token expired"}` | 令牌过期 |
-| 500 | `{"error": "Failed to generate tokens"}` | 令牌生成失败 |
-| 500 | `{"error": "Failed to save refresh token"}` | 刷新令牌保存失败 |
+| 401 | `{"error": "Invalid token"}` | 令牌无效 |
+| 401 | `{"error": "Token expired"}` | 令牌过期 |
+| 500 | `{"error": "Token refresh failed"}` | 刷新失败 |
 
 **测试用例：**
-1. 正常刷新：使用有效的 refresh_token
-2. 无效令牌：使用伪造的 refresh_token
-3. 过期令牌：使用过期的 refresh_token
+1. 正常刷新：`{"refresh_token": "valid_refresh_token"}`
+2. 无效令牌：`{"refresh_token": "invalid_token"}`
+3. 过期令牌：`{"refresh_token": "expired_token"}`
 
-### 1.5 退出登录
+### 1.5 登出
 
 **请求：**
 ```http
@@ -170,14 +167,14 @@ Content-Type: application/json
 Authorization: Bearer <access_token>
 
 {
-  "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+  "refresh_token": "eyJhbGciOiJIUzI1NiIs..."
 }
 ```
 
 **响应：**
 ```json
 {
-  "message": "Logged out"
+  "message": "Logout successful"
 }
 ```
 
@@ -185,16 +182,13 @@ Authorization: Bearer <access_token>
 | 状态码 | 错误信息 | 说明 |
 |--------|---------|------|
 | 401 | `{"error": "Authorization header required"}` | 缺少认证头 |
-| 401 | `{"error": "Invalid authorization header format"}` | 认证头格式错误 |
-| 401 | `{"error": "Invalid token"}` | 令牌无效 |
-| 500 | `{"error": "Failed to revoke token"}` | 令牌撤销失败 |
+| 500 | `{"error": "Logout failed"}` | 登出失败 |
 
 **测试用例：**
-1. 正常退出：`{"refresh_token": "valid_refresh_token"}`
-2. 无效令牌：`{"refresh_token": "invalid_refresh_token"}`
-3. 缺少令牌：不提供 refresh_token
+1. 正常登出：提供有效的 access_token 和 refresh_token
+2. 无效令牌：使用无效的 refresh_token
 
-### 1.6 退出所有设备
+### 1.6 登出所有设备
 
 **请求：**
 ```http
@@ -213,16 +207,15 @@ Authorization: Bearer <access_token>
 | 状态码 | 错误信息 | 说明 |
 |--------|---------|------|
 | 401 | `{"error": "Authorization header required"}` | 缺少认证头 |
-| 401 | `{"error": "Invalid authorization header format"}` | 认证头格式错误 |
-| 401 | `{"error": "Invalid token"}` | 令牌无效 |
-| 500 | `{"error": "Failed to revoke all tokens"}` | 令牌撤销失败 |
+| 500 | `{"error": "Logout failed"}` | 登出失败 |
 
 **测试用例：**
-1. 正常退出：发送请求
+1. 正常登出：提供有效的 access_token
+2. 多设备登录后登出：在其他设备上登录后，使用此接口登出所有设备
 
-## 2. 个人资料接口
+## 2. 用户接口
 
-### 2.1 获取个人资料
+### 2.1 获取用户信息
 
 **请求：**
 ```http
@@ -238,9 +231,11 @@ Authorization: Bearer <access_token>
     "email": "user@example.com",
     "nickname": "User",
     "avatar": "/uploads/avatar_1234567890123456789_1234567890.jpg",
+    "status": 1,
+    "is_admin": false,
     "is_verified": true,
-    "last_login_at": "2023-01-01T00:00:00Z",
-    "last_login_ip": "127.0.0.1"
+    "created_at": "2023-01-01T00:00:00Z",
+    "last_login_at": "2023-01-01T00:00:00Z"
   }
 }
 ```
@@ -249,11 +244,12 @@ Authorization: Bearer <access_token>
 | 状态码 | 错误信息 | 说明 |
 |--------|---------|------|
 | 401 | `{"error": "Authorization header required"}` | 缺少认证头 |
-| 401 | `{"error": "Invalid authorization header format"}` | 认证头格式错误 |
-| 401 | `{"error": "Invalid token"}` | 令牌无效 |
+| 404 | `{"error": "User not found"}` | 用户不存在 |
+| 500 | `{"error": "Failed to get profile"}` | 获取失败 |
 
 **测试用例：**
-1. 正常获取：发送请求
+1. 正常获取：提供有效的 access_token
+2. 用户不存在：删除用户后尝试获取
 
 ### 2.2 更新昵称
 
@@ -275,7 +271,10 @@ Authorization: Bearer <access_token>
     "id": 1234567890123456789,
     "email": "user@example.com",
     "nickname": "New Nickname",
-    "avatar": "/uploads/avatar_1234567890123456789_1234567890.jpg"
+    "avatar": "",
+    "status": 1,
+    "is_admin": false,
+    "is_verified": true
   }
 }
 ```
@@ -284,14 +283,14 @@ Authorization: Bearer <access_token>
 | 状态码 | 错误信息 | 说明 |
 |--------|---------|------|
 | 400 | `{"error": "nickname is required"}` | 昵称不能为空 |
-| 400 | `{"error": "nickname must not exceed 50 characters"}` | 昵称过长 |
+| 400 | `{"error": "nickname must be at most 50 characters"}` | 昵称过长 |
 | 401 | `{"error": "Authorization header required"}` | 缺少认证头 |
 | 404 | `{"error": "User not found"}` | 用户不存在 |
 | 500 | `{"error": "Failed to update nickname"}` | 更新失败 |
 
 **测试用例：**
 1. 正常更新：`{"nickname": "New Nickname"}`
-2. 昵称过长：`{"nickname": "A" × 51}`
+2. 昵称过长：`{"nickname": "a very long nickname that exceeds the maximum length of 50 characters"}`
 3. 空昵称：`{"nickname": ""}`
 
 ### 2.3 上传头像
@@ -302,7 +301,7 @@ POST /api/profile/avatar
 Content-Type: multipart/form-data
 Authorization: Bearer <access_token>
 
-[Form data with file field "avatar"]
+avatar: <file>
 ```
 
 **响应：**
@@ -317,22 +316,19 @@ Authorization: Bearer <access_token>
 | 状态码 | 错误信息 | 说明 |
 |--------|---------|------|
 | 400 | `{"error": "Failed to get file"}` | 文件获取失败 |
-| 400 | `{"error": "File too large"}` | 文件过大 |
-| 400 | `{"error": "Invalid file type"}` | 文件类型错误 |
+| 400 | `{"error": "File too large"}` | 文件过大（超过 5MB） |
+| 400 | `{"error": "Invalid file type"}` | 文件类型不支持（仅支持 jpg, jpeg, png, gif, webp） |
 | 401 | `{"error": "Authorization header required"}` | 缺少认证头 |
-| 500 | `{"error": "Failed to create upload directory"}` | 目录创建失败 |
-| 500 | `{"error": "Failed to create file"}` | 文件创建失败 |
-| 500 | `{"error": "Failed to save file"}` | 文件保存失败 |
-| 500 | `{"error": "Failed to update avatar"}` | 头像更新失败 |
+| 500 | `{"error": "Failed to upload avatar"}` | 上传失败 |
 
 **测试用例：**
-1. 正常上传：选择有效的图片文件
-2. 文件过大：选择超过 5MB 的文件
-3. 无效文件类型：选择非图片文件
+1. 正常上传：上传 jpg/png 图片
+2. 文件过大：上传 10MB 的图片
+3. 无效类型：上传 pdf 文件
 
 ## 3. 帖子接口
 
-### 3.1 列表帖子
+### 3.1 获取帖子列表
 
 **请求：**
 ```http
@@ -345,19 +341,25 @@ GET /api/posts?page=1&page_size=10
   "posts": [
     {
       "id": 1234567890123456789,
-      "user_id": 1,
+      "user_id": 1234567890123456789,
       "title": "Hello World",
       "content": "This is a test post",
       "views": 10,
+      "like_count": 5,
+      "comment_count": 3,
       "created_at": "2023-01-01T00:00:00Z",
+      "updated_at": "2023-01-01T00:00:00Z",
       "user": {
         "id": 1234567890123456789,
         "email": "user@example.com",
-        "nickname": "User"
+        "nickname": "User",
+        "avatar": ""
       }
     }
   ],
-  "total": 1
+  "total": 1,
+  "page": 1,
+  "page_size": 10
 }
 ```
 
@@ -367,30 +369,35 @@ GET /api/posts?page=1&page_size=10
 | 500 | `{"error": "Failed to get posts"}` | 获取失败 |
 
 **测试用例：**
-1. 第一页：`GET /api/posts?page=1&page_size=10`
-2. 第二页：`GET /api/posts?page=2&page_size=10`
-3. 大页面：`GET /api/posts?page=1&page_size=100`
+1. 正常获取：`GET /api/posts?page=1&page_size=10`
+2. 分页获取：`GET /api/posts?page=2&page_size=5`
 
-### 3.2 获取帖子
+### 3.2 获取帖子详情
 
 **请求：**
 ```http
-GET /api/posts/1
+GET /api/posts/1234567890123456789
 ```
 
 **响应：**
 ```json
 {
-  "id": 1,
-  "user_id": 1,
-  "title": "Hello World",
-  "content": "This is a test post",
-  "views": 11,
-  "created_at": "2023-01-01T00:00:00Z",
-  "user": {
+  "post": {
     "id": 1234567890123456789,
-    "email": "user@example.com",
-    "nickname": "User"
+    "user_id": 1234567890123456789,
+    "title": "Hello World",
+    "content": "This is a test post",
+    "views": 10,
+    "like_count": 5,
+    "comment_count": 3,
+    "created_at": "2023-01-01T00:00:00Z",
+    "updated_at": "2023-01-01T00:00:00Z",
+    "user": {
+      "id": 1234567890123456789,
+      "email": "user@example.com",
+      "nickname": "User",
+      "avatar": ""
+    }
   }
 }
 ```
@@ -398,11 +405,11 @@ GET /api/posts/1
 **错误返回：**
 | 状态码 | 错误信息 | 说明 |
 |--------|---------|------|
-| 404 | `{"error": "post not found"}` | 帖子不存在 |
+| 404 | `{"error": "Post not found"}` | 帖子不存在 |
 | 500 | `{"error": "Failed to get post"}` | 获取失败 |
 
 **测试用例：**
-1. 存在的帖子：`GET /api/posts/1`
+1. 正常获取：`GET /api/posts/1`
 2. 不存在的帖子：`GET /api/posts/999`
 
 ### 3.3 创建帖子
@@ -414,20 +421,25 @@ Content-Type: application/json
 Authorization: Bearer <access_token>
 
 {
-  "title": "New Post",
-  "content": "This is a new post"
+  "title": "Hello World",
+  "content": "This is a test post"
 }
 ```
 
 **响应：**
 ```json
 {
-  "id": 2,
-  "user_id": 1,
-  "title": "New Post",
-  "content": "This is a new post",
-  "views": 0,
-  "created_at": "2023-01-02T00:00:00Z"
+  "post": {
+    "id": 1234567890123456789,
+    "user_id": 1234567890123456789,
+    "title": "Hello World",
+    "content": "This is a test post",
+    "views": 0,
+    "like_count": 0,
+    "comment_count": 0,
+    "created_at": "2023-01-01T00:00:00Z",
+    "updated_at": "2023-01-01T00:00:00Z"
+  }
 }
 ```
 
@@ -436,20 +448,20 @@ Authorization: Bearer <access_token>
 |--------|---------|------|
 | 400 | `{"error": "title is required"}` | 标题不能为空 |
 | 400 | `{"error": "content is required"}` | 内容不能为空 |
-| 400 | `{"error": "title must not exceed 200 characters"}` | 标题过长 |
+| 400 | `{"error": "title must be at most 200 characters"}` | 标题过长 |
 | 401 | `{"error": "Authorization header required"}` | 缺少认证头 |
 | 500 | `{"error": "Failed to create post"}` | 创建失败 |
 
 **测试用例：**
-1. 正常创建：`{"title": "Test Post", "content": "Test content"}`
-2. 标题过长：`{"title": "A" × 201, "content": "Test"}`
-3. 内容为空：`{"title": "Test", "content": ""}`
+1. 正常创建：`{"title": "Hello World", "content": "This is a test post"}`
+2. 标题过长：`{"title": "a very long title that exceeds the maximum length of 200 characters and should be rejected by the server", "content": "content"}`
+3. 空内容：`{"title": "Title", "content": ""}`
 
 ### 3.4 更新帖子
 
 **请求：**
 ```http
-PUT /api/posts/1
+PUT /api/posts/1234567890123456789
 Content-Type: application/json
 Authorization: Bearer <access_token>
 
@@ -462,34 +474,39 @@ Authorization: Bearer <access_token>
 **响应：**
 ```json
 {
-  "id": 1,
-  "user_id": 1,
-  "title": "Updated Title",
-  "content": "Updated content",
-  "views": 10,
-  "created_at": "2023-01-01T00:00:00Z"
+  "post": {
+    "id": 1234567890123456789,
+    "user_id": 1234567890123456789,
+    "title": "Updated Title",
+    "content": "Updated content",
+    "views": 10,
+    "like_count": 5,
+    "comment_count": 3,
+    "created_at": "2023-01-01T00:00:00Z",
+    "updated_at": "2023-01-01T01:00:00Z"
+  }
 }
 ```
 
 **错误返回：**
 | 状态码 | 错误信息 | 说明 |
 |--------|---------|------|
-| 400 | `{"error": "title must not exceed 200 characters"}` | 标题过长 |
+| 400 | `{"error": "title must be at most 200 characters"}` | 标题过长 |
 | 401 | `{"error": "Authorization header required"}` | 缺少认证头 |
-| 403 | `{"error": "unauthorized"}` | 无权限更新 |
-| 404 | `{"error": "post not found"}` | 帖子不存在 |
+| 403 | `{"error": "unauthorized"}` | 无权修改（非帖子作者） |
+| 404 | `{"error": "Post not found"}` | 帖子不存在 |
 | 500 | `{"error": "Failed to update post"}` | 更新失败 |
 
 **测试用例：**
 1. 正常更新：`{"title": "Updated Title", "content": "Updated content"}`
-2. 无权限更新：使用其他用户的 token
+2. 无权更新：使用其他用户的 token 更新帖子
 3. 不存在的帖子：`PUT /api/posts/999`
 
 ### 3.5 删除帖子
 
 **请求：**
 ```http
-DELETE /api/posts/1
+DELETE /api/posts/1234567890123456789
 Authorization: Bearer <access_token>
 ```
 
@@ -504,13 +521,13 @@ Authorization: Bearer <access_token>
 | 状态码 | 错误信息 | 说明 |
 |--------|---------|------|
 | 401 | `{"error": "Authorization header required"}` | 缺少认证头 |
-| 403 | `{"error": "unauthorized"}` | 无权限删除 |
-| 404 | `{"error": "post not found"}` | 帖子不存在 |
+| 403 | `{"error": "unauthorized"}` | 无权删除（非帖子作者） |
+| 404 | `{"error": "Post not found"}` | 帖子不存在 |
 | 500 | `{"error": "Failed to delete post"}` | 删除失败 |
 
 **测试用例：**
 1. 正常删除：`DELETE /api/posts/1`
-2. 无权限删除：使用其他用户的 token
+2. 无权删除：使用其他用户的 token 删除帖子
 3. 不存在的帖子：`DELETE /api/posts/999`
 
 ## 4. 评论接口
@@ -519,7 +536,7 @@ Authorization: Bearer <access_token>
 
 **请求：**
 ```http
-GET /api/posts/1/comments?page=1&page_size=10
+GET /api/posts/1234567890123456789/comments?page=1&page_size=10
 ```
 
 **响应：**
@@ -527,72 +544,37 @@ GET /api/posts/1/comments?page=1&page_size=10
 {
   "comments": [
     {
-      "id": 1234567890123456789,
-      "post_id": 1,
-      "comment_id": null,
-      "user_id": 1,
+      "id": 1,
+      "post_id": 1234567890123456789,
+      "user_id": 1234567890123456789,
       "content": "Great post!",
+      "like_count": 2,
       "created_at": "2023-01-01T00:00:00Z",
       "user": {
         "id": 1234567890123456789,
         "email": "user@example.com",
-        "nickname": "User"
+        "nickname": "User",
+        "avatar": ""
       }
     }
   ],
-  "total": 1
+  "total": 1,
+  "page": 1,
+  "page_size": 10
 }
 ```
 
 **错误返回：**
 | 状态码 | 错误信息 | 说明 |
 |--------|---------|------|
+| 404 | `{"error": "Post not found"}` | 帖子不存在 |
 | 500 | `{"error": "Failed to get comments"}` | 获取失败 |
 
 **测试用例：**
-1. 第一页：`GET /api/posts/1/comments?page=1&page_size=10`
-2. 第二页：`GET /api/posts/1/comments?page=2&page_size=10`
-3. 不存在的帖子：`GET /api/posts/999/comments`
+1. 正常获取：`GET /api/posts/1/comments?page=1&page_size=10`
+2. 不存在的帖子：`GET /api/posts/999/comments`
 
-### 4.2 获取回复
-
-**请求：**
-```http
-GET /api/comments/1/replies?page=1&page_size=10
-```
-
-**响应：**
-```json
-{
-  "comments": [
-    {
-      "id": 2,
-      "post_id": 1,
-      "comment_id": 1,
-      "user_id": 2,
-      "content": "Thanks!",
-      "created_at": "2023-01-01T01:00:00Z",
-      "user": {
-        "id": 2,
-        "email": "user2@example.com",
-        "nickname": "User2"
-      }
-    }
-  ],
-  "total": 1
-}
-```
-
-**错误返回：**
-| 状态码 | 错误信息 | 说明 |
-|--------|---------|------|
-| 500 | `{"error": "Failed to get replies"}` | 获取失败 |
-
-**测试用例：**
-1. 正常获取：`GET /api/comments/1/replies?page=1&page_size=10`
-2. 不存在的评论：`GET /api/comments/999/replies`
-
-### 4.3 创建评论
+### 4.2 创建评论
 
 **请求：**
 ```http
@@ -601,37 +583,40 @@ Content-Type: application/json
 Authorization: Bearer <access_token>
 
 {
-  "post_id": 1,
-  "content": "This is a comment"
+  "post_id": 1234567890123456789,
+  "content": "Great post!"
 }
 ```
 
 **响应：**
 ```json
 {
-  "id": 3,
-  "post_id": 1,
-  "comment_id": null,
-  "user_id": 1,
-  "content": "This is a comment",
-  "created_at": "2023-01-02T00:00:00Z"
+  "comment": {
+    "id": 1,
+    "post_id": 1234567890123456789,
+    "user_id": 1234567890123456789,
+    "content": "Great post!",
+    "like_count": 0,
+    "created_at": "2023-01-01T00:00:00Z"
+  }
 }
 ```
 
 **错误返回：**
 | 状态码 | 错误信息 | 说明 |
 |--------|---------|------|
+| 400 | `{"error": "post_id is required"}` | 帖子 ID 不能为空 |
 | 400 | `{"error": "content is required"}` | 内容不能为空 |
-| 400 | `{"error": "post_id or comment_id is required"}` | 必须指定帖子或评论 |
 | 401 | `{"error": "Authorization header required"}` | 缺少认证头 |
+| 404 | `{"error": "Post not found"}` | 帖子不存在 |
 | 500 | `{"error": "Failed to create comment"}` | 创建失败 |
 
 **测试用例：**
-1. 正常评论：`{"post_id": 1, "content": "Test comment"}`
-2. 回复评论：`{"comment_id": 1, "content": "Test reply"}`
-3. 内容为空：`{"post_id": 1, "content": ""}`
+1. 正常创建：`{"post_id": 1, "content": "Great post!"}`
+2. 不存在的帖子：`{"post_id": 999, "content": "Great post!"}`
+3. 空内容：`{"post_id": 1, "content": ""}`
 
-### 4.4 删除评论
+### 4.3 删除评论
 
 **请求：**
 ```http
@@ -650,14 +635,57 @@ Authorization: Bearer <access_token>
 | 状态码 | 错误信息 | 说明 |
 |--------|---------|------|
 | 401 | `{"error": "Authorization header required"}` | 缺少认证头 |
-| 403 | `{"error": "unauthorized"}` | 无权限删除 |
-| 404 | `{"error": "comment not found"}` | 评论不存在 |
+| 403 | `{"error": "unauthorized"}` | 无权删除（非评论作者） |
+| 404 | `{"error": "Comment not found"}` | 评论不存在 |
 | 500 | `{"error": "Failed to delete comment"}` | 删除失败 |
 
 **测试用例：**
 1. 正常删除：`DELETE /api/comments/1`
-2. 无权限删除：使用其他用户的 token
+2. 无权删除：使用其他用户的 token 删除评论
 3. 不存在的评论：`DELETE /api/comments/999`
+
+### 4.4 获取回复（楼中楼）
+
+**请求：**
+```http
+GET /api/comments/1/replies?page=1&page_size=10
+```
+
+**响应：**
+```json
+{
+  "replies": [
+    {
+      "id": 2,
+      "post_id": 1234567890123456789,
+      "user_id": 1234567890123456789,
+      "parent_id": 1,
+      "content": "Thanks!",
+      "like_count": 1,
+      "created_at": "2023-01-01T00:00:00Z",
+      "user": {
+        "id": 1234567890123456789,
+        "email": "user@example.com",
+        "nickname": "User",
+        "avatar": ""
+      }
+    }
+  ],
+  "total": 1,
+  "page": 1,
+  "page_size": 10
+}
+```
+
+**错误返回：**
+| 状态码 | 错误信息 | 说明 |
+|--------|---------|------|
+| 404 | `{"error": "Comment not found"}` | 评论不存在 |
+| 500 | `{"error": "Failed to get replies"}` | 获取失败 |
+
+**测试用例：**
+1. 正常获取：`GET /api/comments/1/replies?page=1&page_size=10`
+2. 不存在的评论：`GET /api/comments/999/replies`
 
 ## 5. 点赞接口
 
@@ -665,7 +693,7 @@ Authorization: Bearer <access_token>
 
 **请求：**
 ```http
-POST /api/posts/1/like
+POST /api/posts/1234567890123456789/like
 Authorization: Bearer <access_token>
 ```
 
@@ -680,6 +708,7 @@ Authorization: Bearer <access_token>
 | 状态码 | 错误信息 | 说明 |
 |--------|---------|------|
 | 401 | `{"error": "Authorization header required"}` | 缺少认证头 |
+| 404 | `{"error": "Post not found"}` | 帖子不存在 |
 | 409 | `{"error": "already liked"}` | 已经点赞 |
 | 500 | `{"error": "Failed to like post"}` | 点赞失败 |
 
@@ -692,7 +721,7 @@ Authorization: Bearer <access_token>
 
 **请求：**
 ```http
-DELETE /api/posts/1/like
+DELETE /api/posts/1234567890123456789/like
 Authorization: Bearer <access_token>
 ```
 
@@ -816,10 +845,12 @@ Authorization: Bearer <access_token>
 **响应：**
 ```json
 {
-  "id": 2,
-  "user_id": 1,
-  "name": "技术文章",
-  "is_default": false
+  "folder": {
+    "id": 1234567890123456789,
+    "user_id": 1234567890123456789,
+    "name": "技术文章",
+    "is_default": false
+  }
 }
 ```
 
@@ -827,36 +858,38 @@ Authorization: Bearer <access_token>
 | 状态码 | 错误信息 | 说明 |
 |--------|---------|------|
 | 400 | `{"error": "name is required"}` | 名称不能为空 |
-| 400 | `{"error": "name must not exceed 50 characters"}` | 名称过长 |
+| 400 | `{"error": "name must be at most 50 characters"}` | 名称过长 |
 | 401 | `{"error": "Authorization header required"}` | 缺少认证头 |
 | 409 | `{"error": "folder already exists"}` | 收藏夹已存在 |
 | 500 | `{"error": "Failed to create folder"}` | 创建失败 |
 
 **测试用例：**
 1. 正常创建：`{"name": "技术文章"}`
-2. 名称过长：`{"name": "A" × 51}`
-3. 重复创建：`{"name": "技术文章"}`（已存在后再创建）
+2. 重复创建：`{"name": "技术文章"}`（已存在时再创建）
+3. 空名称：`{"name": ""}`
 
 ### 6.3 更新收藏夹
 
 **请求：**
 ```http
-PUT /api/folders/2
+PUT /api/folders/1234567890123456789
 Content-Type: application/json
 Authorization: Bearer <access_token>
 
 {
-  "name": "技术分享"
+  "name": "Updated Name"
 }
 ```
 
 **响应：**
 ```json
 {
-  "id": 2,
-  "user_id": 1,
-  "name": "技术分享",
-  "is_default": false
+  "folder": {
+    "id": 1234567890123456789,
+    "user_id": 1234567890123456789,
+    "name": "Updated Name",
+    "is_default": false
+  }
 }
 ```
 
@@ -864,15 +897,14 @@ Authorization: Bearer <access_token>
 | 状态码 | 错误信息 | 说明 |
 |--------|---------|------|
 | 400 | `{"error": "name is required"}` | 名称不能为空 |
-| 400 | `{"error": "name must not exceed 50 characters"}` | 名称过长 |
 | 401 | `{"error": "Authorization header required"}` | 缺少认证头 |
+| 403 | `{"error": "folder not yours"}` | 收藏夹不属于用户 |
 | 404 | `{"error": "folder not found"}` | 收藏夹不存在 |
-| 403 | `{"error": "folder not yours"}` | 无权限更新 |
-| 409 | `{"error": "folder already exists"}` | 名称已存在 |
+| 409 | `{"error": "folder already exists"}` | 收藏夹名称已存在 |
 | 500 | `{"error": "Failed to update folder"}` | 更新失败 |
 
 **测试用例：**
-1. 正常更新：`{"name": "技术分享"}`
+1. 正常更新：`{"name": "Updated Name"}`
 2. 无权限更新：使用其他用户的 token
 3. 不存在的收藏夹：`PUT /api/folders/999`
 
@@ -880,7 +912,7 @@ Authorization: Bearer <access_token>
 
 **请求：**
 ```http
-DELETE /api/folders/2
+DELETE /api/folders/1234567890123456789
 Authorization: Bearer <access_token>
 ```
 
@@ -895,9 +927,9 @@ Authorization: Bearer <access_token>
 | 状态码 | 错误信息 | 说明 |
 |--------|---------|------|
 | 401 | `{"error": "Authorization header required"}` | 缺少认证头 |
+| 403 | `{"error": "folder not yours"}` | 收藏夹不属于用户 |
+| 403 | `{"error": "cannot delete default folder"}` | 不能删除默认收藏夹 |
 | 404 | `{"error": "folder not found"}` | 收藏夹不存在 |
-| 403 | `{"error": "folder not yours"}` | 无权限删除 |
-| 400 | `{"error": "cannot delete default folder"}` | 不能删除默认收藏夹 |
 | 500 | `{"error": "Failed to delete folder"}` | 删除失败 |
 
 **测试用例：**
@@ -914,7 +946,7 @@ Content-Type: application/json
 Authorization: Bearer <access_token>
 
 {
-  "post_id": 1,
+  "post_id": 1234567890123456789,
   "folder_id": 1
 }
 ```
@@ -947,7 +979,7 @@ Authorization: Bearer <access_token>
 
 **请求：**
 ```http
-DELETE /api/posts/1/favorite
+DELETE /api/posts/1234567890123456789/favorite
 Authorization: Bearer <access_token>
 ```
 
@@ -973,7 +1005,7 @@ Authorization: Bearer <access_token>
 
 **请求：**
 ```http
-PUT /api/posts/1/favorite
+PUT /api/posts/1234567890123456789/favorite
 Content-Type: application/json
 Authorization: Bearer <access_token>
 
@@ -1098,7 +1130,7 @@ Authorization: Bearer <access_token>
 
 **请求：**
 ```http
-POST /api/users/2/block
+POST /api/users/1234567890123456789/block
 Authorization: Bearer <access_token>
 ```
 
@@ -1126,7 +1158,7 @@ Authorization: Bearer <access_token>
 
 **请求：**
 ```http
-DELETE /api/users/2/block
+DELETE /api/users/1234567890123456789/block
 Authorization: Bearer <access_token>
 ```
 
@@ -1161,7 +1193,7 @@ Authorization: Bearer <access_token>
 {
   "users": [
     {
-      "id": 2,
+      "id": 1234567890123456789,
       "email": "user2@example.com",
       "nickname": "User2",
       "avatar": ""
@@ -1196,14 +1228,18 @@ Authorization: Bearer <access_token>
   "posts": [
     {
       "id": 1234567890123456789,
-      "user_id": 1,
+      "user_id": 1234567890123456789,
       "title": "Hello World",
       "content": "This is a test post",
       "views": 10,
+      "like_count": 5,
+      "comment_count": 3,
       "created_at": "2023-01-01T00:00:00Z"
     }
   ],
-  "total": 1
+  "total": 1,
+  "page": 1,
+  "page_size": 10
 }
 ```
 
@@ -1215,3 +1251,165 @@ Authorization: Bearer <access_token>
 
 **测试用例：**
 1. 正常获取：`GET /api/my/posts?page=1&page_size=10`
+
+## 9. 管理员接口
+
+### 9.1 管理员删除帖子
+
+**请求：**
+```http
+DELETE /api/admin/posts/1234567890123456789
+Authorization: Bearer <admin_access_token>
+```
+
+**响应：**
+```json
+{
+  "message": "Post deleted"
+}
+```
+
+**错误返回：**
+| 状态码 | 错误信息 | 说明 |
+|--------|---------|------|
+| 401 | `{"error": "Authorization header required"}` | 缺少认证头 |
+| 403 | `{"error": "Admin access required"}` | 需要管理员权限 |
+| 404 | `{"error": "Post not found"}` | 帖子不存在 |
+| 500 | `{"error": "Failed to delete post"}` | 删除失败 |
+
+**测试用例：**
+1. 管理员删除：`DELETE /api/admin/posts/1`（使用管理员 token）
+2. 普通用户尝试：使用普通用户 token 访问
+3. 不存在的帖子：`DELETE /api/admin/posts/999`
+
+### 9.2 管理员删除评论
+
+**请求：**
+```http
+DELETE /api/admin/comments/1
+Authorization: Bearer <admin_access_token>
+```
+
+**响应：**
+```json
+{
+  "message": "Comment deleted"
+}
+```
+
+**错误返回：**
+| 状态码 | 错误信息 | 说明 |
+|--------|---------|------|
+| 401 | `{"error": "Authorization header required"}` | 缺少认证头 |
+| 403 | `{"error": "Admin access required"}` | 需要管理员权限 |
+| 404 | `{"error": "Comment not found"}` | 评论不存在 |
+| 500 | `{"error": "Failed to delete comment"}` | 删除失败 |
+
+**测试用例：**
+1. 管理员删除：`DELETE /api/admin/comments/1`（使用管理员 token）
+2. 普通用户尝试：使用普通用户 token 访问
+3. 不存在的评论：`DELETE /api/admin/comments/999`
+
+### 9.3 禁言用户
+
+**请求：**
+```http
+PUT /api/admin/users/1234567890123456789/ban
+Authorization: Bearer <admin_access_token>
+```
+
+**响应：**
+```json
+{
+  "message": "User banned"
+}
+```
+
+**错误返回：**
+| 状态码 | 错误信息 | 说明 |
+|--------|---------|------|
+| 401 | `{"error": "Authorization header required"}` | 缺少认证头 |
+| 403 | `{"error": "Admin access required"}` | 需要管理员权限 |
+| 404 | `{"error": "User not found"}` | 用户不存在 |
+| 500 | `{"error": "Failed to ban user"}` | 禁言失败 |
+
+**测试用例：**
+1. 管理员禁言：`PUT /api/admin/users/2/ban`（使用管理员 token）
+2. 普通用户尝试：使用普通用户 token 访问
+3. 不存在的用户：`PUT /api/admin/users/999/ban`
+
+### 9.4 解除禁言
+
+**请求：**
+```http
+PUT /api/admin/users/1234567890123456789/unban
+Authorization: Bearer <admin_access_token>
+```
+
+**响应：**
+```json
+{
+  "message": "User unbanned"
+}
+```
+
+**错误返回：**
+| 状态码 | 错误信息 | 说明 |
+|--------|---------|------|
+| 401 | `{"error": "Authorization header required"}` | 缺少认证头 |
+| 403 | `{"error": "Admin access required"}` | 需要管理员权限 |
+| 404 | `{"error": "User not found"}` | 用户不存在 |
+| 500 | `{"error": "Failed to unban user"}` | 解除禁言失败 |
+
+**测试用例：**
+1. 管理员解禁：`PUT /api/admin/users/2/unban`（使用管理员 token）
+2. 普通用户尝试：使用普通用户 token 访问
+3. 不存在的用户：`PUT /api/admin/users/999/unban`
+
+## 10. 中间件说明
+
+### 10.1 AuthRequired 中间件
+
+**功能：** 验证用户登录状态
+
+**使用方式：**
+```go
+router.Use(middleware.AuthRequired())
+```
+
+**行为：**
+- 检查请求头中的 `Authorization` 字段
+- 验证 JWT 令牌的有效性
+- 将用户信息（userID, email, isAdmin）存入上下文
+- 令牌无效或过期时返回 401 错误
+
+### 10.2 AdminRequired 中间件
+
+**功能：** 验证管理员权限
+
+**使用方式：**
+```go
+router.Use(middleware.AuthRequired())
+router.Use(middleware.AdminRequired())
+```
+
+**行为：**
+- 检查上下文中是否存在用户信息（需要先使用 AuthRequired）
+- 验证用户是否为管理员（isAdmin = true）
+- 非管理员用户返回 403 错误
+
+**注意：** AdminRequired 中间件必须与 AuthRequired 中间件一起使用，且 AuthRequired 必须在前面。
+
+## 11. 错误代码汇总
+
+| 状态码 | 含义 | 常见场景 |
+|--------|------|---------|
+| 200 | 成功 | 请求成功处理 |
+| 201 | 创建成功 | 资源创建成功 |
+| 400 | 请求参数错误 | 缺少必填字段、格式错误 |
+| 401 | 未授权 | 缺少认证头、令牌无效或过期 |
+| 403 | 禁止访问 | 无权限操作、需要管理员权限 |
+| 404 | 资源不存在 | 帖子/评论/用户不存在 |
+| 409 | 冲突 | 资源已存在（重复操作） |
+| 429 | 请求过于频繁 | 验证码重复发送 |
+| 500 | 服务器错误 | 内部错误、数据库操作失败 |

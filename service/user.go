@@ -193,6 +193,10 @@ func (s *UserService) Login(req LoginRequest, ip, userAgent string) (*utils.Toke
 		return nil, ErrEmailNotVerified
 	}
 
+	if user.Status == 0 {
+		return nil, errors.New("account is banned")
+	}
+
 	tokenPair, err := utils.GenerateTokenPair(user.ID, user.Email)
 	if err != nil {
 		logger.Error("Failed to generate tokens", zap.Error(err))

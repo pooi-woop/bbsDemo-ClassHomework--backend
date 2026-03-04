@@ -218,6 +218,84 @@ func (s *PostService) DeleteComment(userID int64, commentID uint) error {
 	return nil
 }
 
+// AdminDeletePost 管理员删除帖子
+func (s *PostService) AdminDeletePost(postID int64) error {
+	var post models.Post
+	if err := database.DB.First(&post, postID).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return ErrPostNotFound
+		}
+		return err
+	}
+
+	if err := database.DB.Delete(&post).Error; err != nil {
+		logger.Error("Failed to delete post", zap.Error(err))
+		return err
+	}
+
+	logger.Info("Post deleted by admin", zap.Int64("post_id", postID))
+	return nil
+}
+
+// AdminDeleteComment 管理员删除评论
+func (s *PostService) AdminDeleteComment(commentID uint) error {
+	var comment models.Comment
+	if err := database.DB.First(&comment, commentID).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return ErrCommentNotFound
+		}
+		return err
+	}
+
+	if err := database.DB.Delete(&comment).Error; err != nil {
+		logger.Error("Failed to delete comment", zap.Error(err))
+		return err
+	}
+
+	logger.Info("Comment deleted by admin", zap.Uint("comment_id", commentID))
+	return nil
+}
+
+// BanUser 禁言用户
+func (s *PostService) BanUser(userID int64) error {
+	var user models.User
+	if err := database.DB.First(&user, userID).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return errors.New("user not found")
+		}
+		return err
+	}
+
+	user.Status = 0 // 0 表示禁用
+	if err := database.DB.Save(&user).Error; err != nil {
+		logger.Error("Failed to ban user", zap.Error(err))
+		return err
+	}
+
+	logger.Info("User banned", zap.Int64("user_id", userID))
+	return nil
+}
+
+// UnbanUser 解除禁言
+func (s *PostService) UnbanUser(userID int64) error {
+	var user models.User
+	if err := database.DB.First(&user, userID).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return errors.New("user not found")
+		}
+		return err
+	}
+
+	user.Status = 1 // 1 表示正常
+	if err := database.DB.Save(&user).Error; err != nil {
+		logger.Error("Failed to unban user", zap.Error(err))
+		return err
+	}
+
+	logger.Info("User unbanned", zap.Int64("user_id", userID))
+	return nil
+}
+
 func (s *PostService) GetComments(postID uint, page, pageSize int) ([]models.Comment, int64, error) {
 	var comments []models.Comment
 	var total int64

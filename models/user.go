@@ -17,6 +17,7 @@ type User struct {
 	Nickname    string     `json:"nickname"`
 	Avatar      string     `json:"avatar"`
 	Status      int        `gorm:"default:1" json:"status"`
+	IsAdmin     bool       `gorm:"default:false" json:"is_admin"`
 	IsVerified  bool       `gorm:"default:false" json:"is_verified"`
 	LastLoginAt *time.Time `json:"last_login_at"`
 	LastLoginIP string     `json:"last_login_ip"`

@@ -3,6 +3,7 @@ package router
 import (
 	"bbsDemo/config"
 	"bbsDemo/handler"
+	"bbsDemo/middleware"
 	"bbsDemo/service"
 
 	"github.com/gin-gonic/gin"
@@ -45,7 +46,7 @@ func InitRouter(userService *service.UserService, postService *service.PostServi
 	}
 
 	authorized := r.Group("/api")
-	authorized.Use(handler.AuthMiddleware())
+	authorized.Use(middleware.AuthRequired())
 	{
 		authorized.GET("/profile", authHandler.GetProfile)
 		authorized.POST("/logout", authHandler.Logout)
@@ -83,6 +84,20 @@ func InitRouter(userService *service.UserService, postService *service.PostServi
 		authorized.PUT("/folders/:id", postHandler.UpdateFolder)
 		authorized.DELETE("/folders/:id", postHandler.DeleteFolder)
 		authorized.GET("/folders/:id/posts", postHandler.GetFavoritesByFolder)
+	}
+
+	// 管理员路由
+	admin := r.Group("/api/admin")
+	admin.Use(middleware.AuthRequired())
+	admin.Use(middleware.AdminRequired())
+	{
+		// 帖子管理
+		admin.DELETE("/posts/:id", postHandler.AdminDeletePost)
+		// 评论管理
+		admin.DELETE("/comments/:id", postHandler.AdminDeleteComment)
+		// 用户管理
+		admin.PUT("/users/:id/ban", postHandler.BanUser)
+		admin.PUT("/users/:id/unban", postHandler.UnbanUser)
 	}
 
 	return r

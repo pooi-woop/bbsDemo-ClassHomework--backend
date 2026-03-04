@@ -3,8 +3,6 @@ package handler
 import (
 	"bbsDemo/logger"
 	"bbsDemo/service"
-	"bbsDemo/utils"
-	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -235,39 +233,4 @@ func (h *AuthHandler) UploadAvatar(c *gin.Context) {
 		"message": "Avatar uploaded successfully",
 		"avatar":  avatarURL,
 	})
-}
-
-func AuthMiddleware() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		authHeader := c.GetHeader("Authorization")
-		if authHeader == "" {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Authorization header required"})
-			c.Abort()
-			return
-		}
-
-		var tokenString string
-		if _, err := fmt.Sscanf(authHeader, "Bearer %s", &tokenString); err != nil {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid authorization header format"})
-			c.Abort()
-			return
-		}
-
-		claims, err := utils.ParseToken(tokenString)
-		if err != nil {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
-			c.Abort()
-			return
-		}
-
-		if claims.Type != "access" {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token type"})
-			c.Abort()
-			return
-		}
-
-		c.Set("userID", claims.UserID)
-		c.Set("email", claims.Email)
-		c.Next()
-	}
 }
