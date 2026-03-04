@@ -23,5 +23,5 @@ email:
   host: smtp.qq.com
   port: 587
   username: eyuforum@foxmail.com
-  password: stenjugmmueecdef
+  password: yourpassword
   from: eyuforum@foxmail.com
