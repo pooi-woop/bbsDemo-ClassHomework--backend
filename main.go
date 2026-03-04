@@ -4,10 +4,14 @@ import (
 	"bbsDemo/config"
 	"bbsDemo/database"
 	"bbsDemo/logger"
+	"bbsDemo/queue"
 	"bbsDemo/router"
 	"bbsDemo/service"
 	"bbsDemo/utils"
 	"fmt"
+	"os"
+	"os/signal"
+	"syscall"
 
 	"go.uber.org/zap"
 )
@@ -36,14 +40,31 @@ func main() {
 		logger.Fatal("Failed to migrate database", zap.Error(err))
 	}
 
+	if err := database.InitRedis(cfg.Redis); err != nil {
+		logger.Fatal("Failed to initialize Redis", zap.Error(err))
+	}
+	defer database.CloseRedis()
+
+	worker := queue.NewWorker(cfg.Email, 3)
+	worker.Start()
+	defer worker.Stop()
+
 	userService := service.NewUserService(cfg.Email, cfg.Upload)
 	postService := service.NewPostService()
 
 	r := router.InitRouter(userService, postService, cfg)
 
-	addr := fmt.Sprintf(":%d", cfg.Server.Port)
-	logger.Info("Server starting", zap.String("address", addr))
-	if err := r.Run(addr); err != nil {
-		logger.Fatal("Failed to start server", zap.Error(err))
-	}
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+
+	go func() {
+		addr := fmt.Sprintf(":%d", cfg.Server.Port)
+		logger.Info("Server starting", zap.String("address", addr))
+		if err := r.Run(addr); err != nil {
+			logger.Fatal("Failed to start server", zap.Error(err))
+		}
+	}()
+
+	<-quit
+	logger.Info("Shutting down server...")
 }

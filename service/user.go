@@ -9,7 +9,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"net/smtp"
 	"os"
 	"path/filepath"
 	"strings"
@@ -83,12 +82,12 @@ func (s *UserService) SendVerificationCode(req SendCodeRequest) error {
 
 	subject := "Verification Code"
 	body := fmt.Sprintf("Your verification code is: %s. It will expire in 10 minutes.", code)
-	if err := s.sendEmail(req.Email, subject, body); err != nil {
-		logger.Error("Failed to send email", zap.Error(err))
+	if err := database.PushEmail(req.Email, subject, body); err != nil {
+		logger.Error("Failed to push email to queue", zap.Error(err))
 		return err
 	}
 
-	logger.Info("Verification code sent", zap.String("email", req.Email), zap.String("type", req.Type))
+	logger.Info("Verification code queued", zap.String("email", req.Email), zap.String("type", req.Type))
 	return nil
 }
 
@@ -330,21 +329,4 @@ func (s *UserService) UploadAvatar(userID uint, fileName string, fileSize int64,
 
 	logger.Info("Avatar uploaded", zap.Uint("user_id", userID), zap.String("avatar", avatarURL))
 	return avatarURL, nil
-}
-
-func (s *UserService) sendEmail(to, subject, body string) error {
-	if s.emailConfig.Host == "" {
-		logger.Info("Email config not set, skipping email send",
-			zap.String("to", to),
-			zap.String("subject", subject),
-			zap.String("body", body))
-		return nil
-	}
-
-	msg := []byte(fmt.Sprintf("To: %s\r\nSubject: %s\r\n\r\n%s", to, subject, body))
-
-	auth := smtp.PlainAuth("", s.emailConfig.Username, s.emailConfig.Password, s.emailConfig.Host)
-	addr := fmt.Sprintf("%s:%d", s.emailConfig.Host, s.emailConfig.Port)
-
-	return smtp.SendMail(addr, auth, s.emailConfig.From, []string{to}, msg)
 }

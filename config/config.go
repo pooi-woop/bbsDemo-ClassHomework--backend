@@ -8,6 +8,7 @@ import (
 
 type Config struct {
 	MySQL  MySQLConfig  `mapstructure:"mysql"`
+	Redis  RedisConfig  `mapstructure:"redis"`
 	Server ServerConfig `mapstructure:"server"`
 	Logger LoggerConfig `mapstructure:"logger"`
 	JWT    JWTConfig    `mapstructure:"jwt"`
@@ -21,6 +22,13 @@ type MySQLConfig struct {
 	User     string `mapstructure:"user"`
 	Password string `mapstructure:"password"`
 	Database string `mapstructure:"database"`
+}
+
+type RedisConfig struct {
+	Host     string `mapstructure:"host"`
+	Port     int    `mapstructure:"port"`
+	Password string `mapstructure:"password"`
+	DB       int    `mapstructure:"db"`
 }
 
 type ServerConfig struct {
@@ -61,6 +69,10 @@ func LoadConfig(configPath string) (*Config, error) {
 	viper.SetDefault("upload.path", "./uploads")
 	viper.SetDefault("upload.max_size", 5242880)
 	viper.SetDefault("upload.allowed_ext", ".jpg,.jpeg,.png,.gif,.webp")
+	viper.SetDefault("redis.host", "localhost")
+	viper.SetDefault("redis.port", 6379)
+	viper.SetDefault("redis.password", "")
+	viper.SetDefault("redis.db", 0)
 
 	if err := viper.ReadInConfig(); err != nil {
 		return nil, fmt.Errorf("failed to read config file: %w", err)

@@ -145,8 +145,9 @@ func (s *PostService) GetPost(postID uint) (*models.Post, error) {
 		return nil, err
 	}
 
-	post.Views++
-	database.DB.Model(&post).Update("views", post.Views)
+	if err := database.PushViewCount(postID); err != nil {
+		logger.Error("Failed to push view count to queue", zap.Error(err))
+	}
 
 	return &post, nil
 }
@@ -276,6 +277,10 @@ func (s *PostService) LikePost(userID, postID uint) error {
 		return err
 	}
 
+	if err := database.PushLikeCount(postID, 0, "like"); err != nil {
+		logger.Error("Failed to push like count to queue", zap.Error(err))
+	}
+
 	logger.Info("Post liked", zap.Uint("post_id", postID), zap.Uint("user_id", userID))
 	return nil
 }
@@ -292,6 +297,10 @@ func (s *PostService) UnlikePost(userID, postID uint) error {
 	if err := database.DB.Delete(&like).Error; err != nil {
 		logger.Error("Failed to unlike post", zap.Error(err))
 		return err
+	}
+
+	if err := database.PushLikeCount(postID, 0, "unlike"); err != nil {
+		logger.Error("Failed to push unlike count to queue", zap.Error(err))
 	}
 
 	logger.Info("Post unliked", zap.Uint("post_id", postID), zap.Uint("user_id", userID))
@@ -314,6 +323,10 @@ func (s *PostService) LikeComment(userID, commentID uint) error {
 		return err
 	}
 
+	if err := database.PushLikeCount(0, commentID, "like"); err != nil {
+		logger.Error("Failed to push like count to queue", zap.Error(err))
+	}
+
 	logger.Info("Comment liked", zap.Uint("comment_id", commentID), zap.Uint("user_id", userID))
 	return nil
 }
@@ -330,6 +343,10 @@ func (s *PostService) UnlikeComment(userID, commentID uint) error {
 	if err := database.DB.Delete(&like).Error; err != nil {
 		logger.Error("Failed to unlike comment", zap.Error(err))
 		return err
+	}
+
+	if err := database.PushLikeCount(0, commentID, "unlike"); err != nil {
+		logger.Error("Failed to push unlike count to queue", zap.Error(err))
 	}
 
 	logger.Info("Comment unliked", zap.Uint("comment_id", commentID), zap.Uint("user_id", userID))
