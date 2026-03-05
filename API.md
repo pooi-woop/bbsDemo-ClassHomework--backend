@@ -28,7 +28,7 @@ Content-Type: application/json
 | 400 | `{"error": "email is required"}` | 邮箱不能为空 |
 | 400 | `{"error": "type is required"}` | 类型不能为空 |
 | 400 | `{"error": "invalid email format"}` | 邮箱格式错误 |
-| 400 | `{"error": "invalid type"}` | 类型错误，只能是 register 或 reset |
+| 400 | `{"error": "invalid type"}` | 类型错误，只能是 register、reset 或 delete |
 | 409 | `{"error": "user already exists"}` | 注册类型时用户已存在 |
 | 429 | `{"error": "verification code already sent"}` | 验证码已发送，请勿重复请求 |
 | 500 | `{"error": "Failed to push email to queue"}` | 邮件推送失败 |
@@ -37,6 +37,8 @@ Content-Type: application/json
 1. 正常发送：`{"email": "test@example.com", "type": "register"}`
 2. 邮箱格式错误：`{"email": "invalid-email", "type": "register"}`
 3. 重复发送：连续两次发送到同一邮箱
+4. 重置密码发送：`{"email": "user@example.com", "type": "reset"}`
+5. 删除账户发送：`{"email": "user@example.com", "type": "delete"}`
 
 ### 1.2 注册
 
@@ -212,6 +214,75 @@ Authorization: Bearer <access_token>
 **测试用例：**
 1. 正常登出：提供有效的 access_token
 2. 多设备登录后登出：在其他设备上登录后，使用此接口登出所有设备
+
+### 1.7 重置密码
+
+**请求：**
+```http
+POST /api/auth/reset-password
+Content-Type: application/json
+
+{
+  "email": "user@example.com",
+  "code": "123456",
+  "password": "newpassword123"
+}
+```
+
+**响应：**
+```json
+{
+  "message": "Password reset successfully"
+}
+```
+
+**错误返回：**
+| 状态码 | 错误信息 | 说明 |
+|--------|---------|------|
+| 400 | `{"error": "invalid verification code"}` | 验证码错误 |
+| 400 | `{"error": "verification code already used"}` | 验证码已使用 |
+| 400 | `{"error": "verification code expired"}` | 验证码过期 |
+| 404 | `{"error": "User not found"}` | 用户不存在 |
+| 500 | `{"error": "Failed to reset password"}` | 重置密码失败 |
+
+**测试用例：**
+1. 正常重置：`{"email": "user@example.com", "code": "123456", "password": "newpassword123"}`
+2. 验证码错误：`{"email": "user@example.com", "code": "654321", "password": "newpassword123"}`
+3. 验证码过期：使用过期的验证码
+
+### 1.8 删除账户
+
+**请求：**
+```http
+POST /api/auth/delete-account
+Content-Type: application/json
+
+{
+  "email": "user@example.com",
+  "code": "123456"
+}
+```
+
+**响应：**
+```json
+{
+  "message": "Account deleted successfully"
+}
+```
+
+**错误返回：**
+| 状态码 | 错误信息 | 说明 |
+|--------|---------|------|
+| 400 | `{"error": "invalid verification code"}` | 验证码错误 |
+| 400 | `{"error": "verification code already used"}` | 验证码已使用 |
+| 400 | `{"error": "verification code expired"}` | 验证码过期 |
+| 404 | `{"error": "User not found"}` | 用户不存在 |
+| 500 | `{"error": "Failed to delete account"}` | 删除账户失败 |
+
+**测试用例：**
+1. 正常删除：`{"email": "user@example.com", "code": "123456"}`
+2. 验证码错误：`{"email": "user@example.com", "code": "654321"}`
+3. 验证码过期：使用过期的验证码
 
 ## 2. 用户接口
 

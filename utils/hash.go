@@ -3,9 +3,13 @@ package utils
 import (
 	"crypto/rand"
 	"encoding/base64"
+	mathrand "math/rand"
+	"time"
 
 	"golang.org/x/crypto/bcrypt"
 )
+
+var rng = mathrand.New(mathrand.NewSource(time.Now().UnixNano()))
 
 func HashPassword(password string) (string, error) {
 	salt := make([]byte, 16)
@@ -49,8 +53,7 @@ func splitHash(hashedPassword string) []string {
 func GenerateVerificationCode() string {
 	code := make([]byte, 6)
 	for i := range code {
-		n, _ := rand.Read([]byte{0})
-		code[i] = byte('0' + n%10)
+		code[i] = byte('0' + rng.Intn(10))
 	}
 	return string(code)
 }
