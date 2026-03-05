@@ -106,8 +106,25 @@ type ResetPasswordRequest struct {
 
 func (s *UserService) SendVerificationCode(req SendCodeRequest) error {
 	var user models.User
-	if err := database.DB.Where("email = ?", req.Email).First(&user).Error; err == nil && req.Type == "register" {
-		return ErrUserExists
+	err := database.DB.Where("email = ?", req.Email).First(&user).Error
+
+	if req.Type == "register" {
+		// 注册场景：用户已存在则报错，用户不存在则继续发送验证码
+		if err == nil {
+			return ErrUserExists
+		}
+		if !errors.Is(err, gorm.ErrRecordNotFound) {
+			return err
+		}
+		// 用户不存在，继续发送验证码
+	} else {
+		// 其他场景（重置密码、删除账号）：用户必须存在
+		if err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return ErrUserNotFound
+			}
+			return err
+		}
 	}
 
 	code := utils.GenerateVerificationCode()

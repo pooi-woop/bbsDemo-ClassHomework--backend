@@ -5,6 +5,7 @@ import (
 	"bbsDemo/database"
 	"bbsDemo/logger"
 	"bbsDemo/models"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"net/smtp"
@@ -246,7 +247,54 @@ func (w *Worker) sendEmail(to, subject, body string) error {
 	auth := smtp.PlainAuth("", w.emailConfig.Username, w.emailConfig.Password, w.emailConfig.Host)
 	addr := fmt.Sprintf("%s:%d", w.emailConfig.Host, w.emailConfig.Port)
 
-	return smtp.SendMail(addr, auth, w.emailConfig.From, []string{to}, msg)
+	// 创建TLS配置
+	tlsConfig := &tls.Config{
+		InsecureSkipVerify: true,
+		ServerName:         w.emailConfig.Host,
+	}
+
+	// 连接SMTP服务器
+	client, err := smtp.Dial(addr)
+	if err != nil {
+		return fmt.Errorf("failed to connect to SMTP server: %w", err)
+	}
+	defer client.Close()
+
+	// 启动TLS
+	if err := client.StartTLS(tlsConfig); err != nil {
+		return fmt.Errorf("failed to start TLS: %w", err)
+	}
+
+	// 认证
+	if err := client.Auth(auth); err != nil {
+		return fmt.Errorf("failed to authenticate: %w", err)
+	}
+
+	// 设置发件人和收件人
+	if err := client.Mail(w.emailConfig.From); err != nil {
+		return fmt.Errorf("failed to set sender: %w", err)
+	}
+
+	if err := client.Rcpt(to); err != nil {
+		return fmt.Errorf("failed to set recipient: %w", err)
+	}
+
+	// 发送邮件内容
+	writer, err := client.Data()
+	if err != nil {
+		return fmt.Errorf("failed to get data writer: %w", err)
+	}
+
+	_, err = writer.Write(msg)
+	if err != nil {
+		return fmt.Errorf("failed to write message: %w", err)
+	}
+
+	if err := writer.Close(); err != nil {
+		return fmt.Errorf("failed to close writer: %w", err)
+	}
+
+	return nil
 }
 
 /*消息队列整体架构如下

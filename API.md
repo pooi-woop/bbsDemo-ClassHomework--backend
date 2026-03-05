@@ -58,7 +58,7 @@ Content-Type: application/json
 ```json
 {
   "user": {
-    "id": 1234567890123456789,
+    "id": "1234567890123456789",
     "email": "user@example.com",
     "nickname": "",
     "avatar": "",
@@ -298,7 +298,7 @@ Authorization: Bearer <access_token>
 ```json
 {
   "user": {
-    "id": 1234567890123456789,
+    "id": "1234567890123456789",
     "email": "user@example.com",
     "nickname": "User",
     "bio": "",
@@ -340,7 +340,7 @@ Authorization: Bearer <access_token>
 ```json
 {
   "user": {
-    "id": 1234567890123456789,
+    "id": "1234567890123456789",
     "email": "user@example.com",
     "nickname": "New Nickname",
     "avatar": "",
@@ -384,6 +384,9 @@ avatar: <file>
 }
 ```
 
+**注意：** 所有 ID 字段（如 `id`、`user_id`、`post_id` 等）在 JSON 响应中均为**字符串类型**，以避免 JavaScript 数字精度丢失问题。
+```
+
 **错误返回：**
 | 状态码 | 错误信息 | 说明 |
 |--------|---------|------|
@@ -415,7 +418,7 @@ Authorization: Bearer <access_token>
 ```json
 {
   "user": {
-    "id": 1234567890123456789,
+    "id": "1234567890123456789",
     "email": "user@example.com",
     "nickname": "User",
     "bio": "This is my bio",
@@ -453,8 +456,8 @@ GET /api/posts?page=1&page_size=10
 {
   "posts": [
     {
-      "id": 1234567890123456789,
-      "user_id": 1234567890123456789,
+      "id": "1234567890123456789",
+      "user_id": "1234567890123456789",
       "title": "Hello World",
       "content": "This is a test post",
       "views": 10,
@@ -463,7 +466,7 @@ GET /api/posts?page=1&page_size=10
       "created_at": "2023-01-01T00:00:00Z",
       "updated_at": "2023-01-01T00:00:00Z",
       "user": {
-        "id": 1234567890123456789,
+        "id": "1234567890123456789",
         "email": "user@example.com",
         "nickname": "User",
         "avatar": ""
@@ -497,8 +500,8 @@ GET /api/posts/search?keyword=Hello&page=1&page_size=10
 {
   "posts": [
     {
-      "id": 1234567890123456789,
-      "user_id": 1234567890123456789,
+      "id": "1234567890123456789",
+      "user_id": "1234567890123456789",
       "title": "Hello World",
       "content": "This is a test post",
       "views": 10,
@@ -507,7 +510,7 @@ GET /api/posts/search?keyword=Hello&page=1&page_size=10
       "created_at": "2023-01-01T00:00:00Z",
       "updated_at": "2023-01-01T00:00:00Z",
       "user": {
-        "id": 1234567890123456789,
+        "id": "1234567890123456789",
         "email": "user@example.com",
         "nickname": "User",
         "avatar": ""
@@ -543,8 +546,8 @@ GET /api/posts/1234567890123456789
 ```json
 {
   "post": {
-    "id": 1234567890123456789,
-    "user_id": 1234567890123456789,
+    "id": "1234567890123456789",
+    "user_id": "1234567890123456789",
     "title": "Hello World",
     "content": "This is a test post",
     "views": 10,
@@ -553,7 +556,7 @@ GET /api/posts/1234567890123456789
     "created_at": "2023-01-01T00:00:00Z",
     "updated_at": "2023-01-01T00:00:00Z",
     "user": {
-      "id": 1234567890123456789,
+      "id": "1234567890123456789",
       "email": "user@example.com",
       "nickname": "User",
       "avatar": ""
@@ -590,8 +593,8 @@ Authorization: Bearer <access_token>
 ```json
 {
   "post": {
-    "id": 1234567890123456789,
-    "user_id": 1234567890123456789,
+    "id": "1234567890123456789",
+    "user_id": "1234567890123456789",
     "title": "Hello World",
     "content": "This is a test post",
     "views": 0,
@@ -635,8 +638,8 @@ Authorization: Bearer <access_token>
 ```json
 {
   "post": {
-    "id": 1234567890123456789,
-    "user_id": 1234567890123456789,
+    "id": "1234567890123456789",
+    "user_id": "1234567890123456789",
     "title": "Updated Title",
     "content": "Updated content",
     "views": 10,
@@ -704,14 +707,14 @@ GET /api/posts/1234567890123456789/comments?page=1&page_size=10
 {
   "comments": [
     {
-      "id": 1,
-      "post_id": 1234567890123456789,
-      "user_id": 1234567890123456789,
+      "id": "1",
+      "post_id": "1234567890123456789",
+      "user_id": "1234567890123456789",
       "content": "Great post!",
       "like_count": 2,
       "created_at": "2023-01-01T00:00:00Z",
       "user": {
-        "id": 1234567890123456789,
+        "id": "1234567890123456789",
         "email": "user@example.com",
         "nickname": "User",
         "avatar": ""

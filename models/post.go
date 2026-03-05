@@ -7,12 +7,12 @@ import (
 )
 
 type Post struct {
-	ID        int64          `gorm:"primarykey" json:"id"`
+	ID        int64          `gorm:"primarykey" json:"id,string"`
 	CreatedAt time.Time      `json:"created_at"`
 	UpdatedAt time.Time      `json:"updated_at"`
 	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"`
 
-	UserID  int64  `gorm:"index;not null" json:"user_id"`
+	UserID  int64  `gorm:"index;not null" json:"user_id,string"`
 	Title   string `gorm:"size:200;not null" json:"title"`
 	Content string `gorm:"type:text;not null" json:"content"`
 	Views   int    `gorm:"default:0" json:"views"`
@@ -21,14 +21,14 @@ type Post struct {
 }
 
 type Comment struct {
-	ID        uint           `gorm:"primarykey" json:"id"`
+	ID        uint           `gorm:"primarykey" json:"id,string"`
 	CreatedAt time.Time      `json:"created_at"`
 	UpdatedAt time.Time      `json:"updated_at"`
 	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"`
 
-	PostID    *uint  `gorm:"index" json:"post_id"`
-	CommentID *uint  `gorm:"index" json:"comment_id"`
-	UserID    int64  `gorm:"index;not null" json:"user_id"`
+	PostID    *uint  `gorm:"index" json:"post_id,string"`
+	CommentID *uint  `gorm:"index" json:"comment_id,string"`
+	UserID    int64  `gorm:"index;not null" json:"user_id,string"`
 	Content   string `gorm:"type:text;not null" json:"content"`
 	IsDeleted bool   `gorm:"default:false" json:"is_deleted"`
 
@@ -38,14 +38,14 @@ type Comment struct {
 }
 
 type Like struct {
-	ID        uint           `gorm:"primarykey" json:"id"`
+	ID        uint           `gorm:"primarykey" json:"id,string"`
 	CreatedAt time.Time      `json:"created_at"`
 	UpdatedAt time.Time      `json:"updated_at"`
 	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"`
 
-	UserID    int64  `gorm:"index;not null" json:"user_id"`
-	PostID    *int64 `gorm:"index" json:"post_id"`
-	CommentID *uint  `gorm:"index" json:"comment_id"`
+	UserID    int64  `gorm:"index;not null" json:"user_id,string"`
+	PostID    *int64 `gorm:"index" json:"post_id,string"`
+	CommentID *uint  `gorm:"index" json:"comment_id,string"`
 
 	User    *User    `gorm:"foreignKey:UserID" json:"user,omitempty"`
 	Post    *Post    `gorm:"foreignKey:PostID" json:"post,omitempty"`
