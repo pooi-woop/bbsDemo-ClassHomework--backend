@@ -511,6 +511,39 @@ go build
    - 当前实现为基础版本，实际生产环境建议使用进程管理工具
    - 推荐使用 PM2 或 systemd 等进程管理工具来管理服务的启动和关闭
 
+### 6. 用户权限管理
+
+1. **通过 MySQL 控制台设置管理员**：
+
+   首先连接到 MySQL 数据库：
+   ```bash
+   mysql -u root -p bbs
+   ```
+
+   查看用户列表：
+   ```sql
+   SELECT id, email, nickname, is_admin FROM users;
+   ```
+
+   将指定用户设置为管理员：
+   ```sql
+   UPDATE users SET is_admin = TRUE WHERE id = <用户ID>;
+   ```
+
+   取消用户的管理员权限：
+   ```sql
+   UPDATE users SET is_admin = FALSE WHERE id = <用户ID>;
+   ```
+
+   示例：将邮箱为 admin@example.com 的用户设置为管理员：
+   ```sql
+   UPDATE users SET is_admin = TRUE WHERE email = 'admin@example.com';
+   ```
+
+2. **管理员权限说明**：
+   - 管理员拥有更高的权限，可以执行一些普通用户无法进行的操作
+   - 管理员权限在数据库中通过 `is_admin` 字段控制
+
 ## 开发说明
 
 ### 代码规范
