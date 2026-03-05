@@ -327,6 +327,34 @@ go build
      -d '{"refresh_token": "your_refresh_token"}'
    ```
 
+5. **重置密码**：
+   - 5.1 发送重置密码验证码：
+     ```bash
+     curl -X POST http://localhost:8080/api/auth/send-code \
+       -H "Content-Type: application/json" \
+       -d '{"email": "user@example.com", "type": "reset"}'
+     ```
+   - 5.2 使用验证码重置密码：
+     ```bash
+     curl -X POST http://localhost:8080/api/auth/reset-password \
+       -H "Content-Type: application/json" \
+       -d '{"email": "user@example.com", "code": "123456", "password": "newpassword123"}'
+     ```
+
+6. **注销账户**：
+   - 6.1 发送注销验证码：
+     ```bash
+     curl -X POST http://localhost:8080/api/auth/send-code \
+       -H "Content-Type: application/json" \
+       -d '{"email": "user@example.com", "type": "delete"}'
+     ```
+   - 6.2 使用验证码注销账户：
+     ```bash
+     curl -X POST http://localhost:8080/api/auth/delete-account \
+       -H "Content-Type: application/json" \
+       -d '{"email": "user@example.com", "code": "123456"}'
+     ```
+
 #### 1.2 帖子操作
 
 1. **创建帖子**：

@@ -260,3 +260,57 @@ func (h *AuthHandler) UploadAvatar(c *gin.Context) {
 		"avatar":  avatarURL,
 	})
 }
+
+func (h *AuthHandler) DeleteAccount(c *gin.Context) {
+	var req service.DeleteAccountRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if err := h.userService.DeleteAccount(req); err != nil {
+		switch err {
+		case service.ErrUserNotFound:
+			c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+		case service.ErrInvalidVerificationCode:
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid verification code"})
+		case service.ErrVerificationCodeUsed:
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Verification code already used"})
+		case service.ErrVerificationCodeExpired:
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Verification code expired"})
+		default:
+			logger.Error("Failed to delete account", zap.Error(err))
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete account"})
+		}
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Account deleted successfully"})
+}
+
+func (h *AuthHandler) ResetPassword(c *gin.Context) {
+	var req service.ResetPasswordRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if err := h.userService.ResetPassword(req); err != nil {
+		switch err {
+		case service.ErrUserNotFound:
+			c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+		case service.ErrInvalidVerificationCode:
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid verification code"})
+		case service.ErrVerificationCodeUsed:
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Verification code already used"})
+		case service.ErrVerificationCodeExpired:
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Verification code expired"})
+		default:
+			logger.Error("Failed to reset password", zap.Error(err))
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to reset password"})
+		}
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Password reset successfully"})
+}

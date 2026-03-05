@@ -12,16 +12,17 @@ type User struct {
 	UpdatedAt time.Time      `json:"updated_at"`
 	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"`
 
-	Email       string     `gorm:"uniqueIndex;not null;type:varchar(255)" json:"email"`
-	Password    string     `gorm:"not null" json:"-"`
-	Nickname    string     `json:"nickname"`
-	Bio         string     `gorm:"type:varchar(500)" json:"bio"`//简介
-	Avatar      string     `json:"avatar"`
-	Status      int        `gorm:"default:1" json:"status"`
-	IsAdmin     bool       `gorm:"default:false" json:"is_admin"`
-	IsVerified  bool       `gorm:"default:false" json:"is_verified"`
-	LastLoginAt *time.Time `json:"last_login_at"`
-	LastLoginIP string     `json:"last_login_ip"`
+	Email        string     `gorm:"uniqueIndex;not null;type:varchar(255)" json:"email"`
+	Password     string     `gorm:"not null" json:"-"`
+	Nickname     string     `json:"nickname"`
+	Bio          string     `gorm:"type:varchar(500)" json:"bio"`
+	Avatar       string     `json:"avatar"`
+	Status       int        `gorm:"default:1" json:"status"`
+	IsAdmin      bool       `gorm:"default:false" json:"is_admin"`
+	IsVerified   bool       `gorm:"default:false" json:"is_verified"`
+	LastLoginAt  *time.Time `json:"last_login_at"`
+	LastLoginIP  string     `json:"last_login_ip"`
+	DeletedAtStr string      `gorm:"-" json:"deleted_at"`
 }
 
 type VerificationCode struct {

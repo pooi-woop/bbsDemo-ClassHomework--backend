@@ -31,6 +31,8 @@ func InitRouter(userService *service.UserService, postService *service.PostServi
 		auth.POST("/register", authHandler.Register)
 		auth.POST("/login", authHandler.Login)
 		auth.POST("/refresh", authHandler.RefreshToken)
+		auth.POST("/delete-account", authHandler.DeleteAccount)
+		auth.POST("/reset-password", authHandler.ResetPassword)
 	}
 
 	posts := r.Group("/api/posts")

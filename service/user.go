@@ -20,16 +20,19 @@ import (
 )
 
 var (
-	ErrUserExists       = errors.New("user already exists")
-	ErrUserNotFound     = errors.New("user not found")
-	ErrInvalidPassword  = errors.New("invalid password")
-	ErrInvalidCode      = errors.New("invalid verification code")
-	ErrCodeExpired      = errors.New("verification code expired")
-	ErrEmailNotVerified = errors.New("email not verified")
-	ErrInvalidToken     = errors.New("invalid token")
-	ErrTokenExpired     = errors.New("token expired")
-	ErrInvalidFileType  = errors.New("invalid file type")
-	ErrFileTooLarge     = errors.New("file too large")
+	ErrUserExists              = errors.New("user already exists")
+	ErrUserNotFound            = errors.New("user not found")
+	ErrInvalidPassword         = errors.New("invalid password")
+	ErrInvalidCode             = errors.New("invalid verification code")
+	ErrCodeExpired             = errors.New("verification code expired")
+	ErrEmailNotVerified        = errors.New("email not verified")
+	ErrInvalidToken            = errors.New("invalid token")
+	ErrTokenExpired            = errors.New("token expired")
+	ErrInvalidFileType         = errors.New("invalid file type")
+	ErrFileTooLarge            = errors.New("file too large")
+	ErrInvalidVerificationCode = errors.New("invalid verification code")
+	ErrVerificationCodeUsed    = errors.New("verification code already used")
+	ErrVerificationCodeExpired = errors.New("verification code expired")
 )
 
 type verificationCode struct {
@@ -87,7 +90,18 @@ type LoginRequest struct {
 
 type SendCodeRequest struct {
 	Email string `json:"email" binding:"required,email"`
-	Type  string `json:"type" binding:"required,oneof=register reset"`
+	Type  string `json:"type" binding:"required,oneof=register reset delete"`
+}
+
+type DeleteAccountRequest struct {
+	Email string `json:"email" binding:"required,email"`
+	Code  string `json:"code" binding:"required"`
+}
+
+type ResetPasswordRequest struct {
+	Email    string `json:"email" binding:"required,email"`
+	Code     string `json:"code" binding:"required"`
+	Password string `json:"password" binding:"required,min=6"`
 }
 
 func (s *UserService) SendVerificationCode(req SendCodeRequest) error {
@@ -300,6 +314,9 @@ func (s *UserService) GetUserByID(userID int64) (*models.User, error) {
 		}
 		return nil, err
 	}
+	if user.DeletedAt.Valid {
+		user.DeletedAtStr = user.DeletedAt.Time.Format("2006-01-02 15:04:05")
+	}
 	return &user, nil
 }
 
@@ -339,6 +356,116 @@ func (s *UserService) UpdateBio(userID int64, bio string) (*models.User, error) 
 
 	logger.Info("Bio updated", zap.Int64("user_id", user.ID))
 	return &user, nil
+}
+
+func (s *UserService) DeleteAccount(req DeleteAccountRequest) error {
+	key := fmt.Sprintf("%s:%s", req.Email, "delete")
+	s.codesMutex.RLock()
+	codeData, exists := s.codes[key]
+	s.codesMutex.RUnlock()
+
+	if !exists {
+		return ErrInvalidVerificationCode
+	}
+
+	if codeData.IsUsed {
+		return ErrVerificationCodeUsed
+	}
+
+	if time.Now().After(codeData.ExpiresAt) {
+		return ErrVerificationCodeExpired
+	}
+
+	if codeData.Code != req.Code {
+		return ErrInvalidVerificationCode
+	}
+
+	s.codesMutex.Lock()
+	s.codes[key] = verificationCode{
+		Code:      codeData.Code,
+		Type:      codeData.Type,
+		ExpiresAt: codeData.ExpiresAt,
+		IsUsed:    true,
+	}
+	s.codesMutex.Unlock()
+
+	var user models.User
+	if err := database.DB.Where("email = ?", req.Email).First(&user).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return ErrUserNotFound
+		}
+		return err
+	}
+
+	if err := database.DB.Delete(&user).Error; err != nil {
+		logger.Error("Failed to delete user", zap.Error(err))
+		return err
+	}
+
+	if err := database.DB.Where("user_id = ?", user.ID).Delete(&models.RefreshToken{}).Error; err != nil {
+		logger.Warn("Failed to delete user refresh tokens", zap.Error(err))
+	}
+
+	logger.Info("User account deleted", zap.Int64("user_id", user.ID), zap.String("email", req.Email))
+	return nil
+}
+
+func (s *UserService) ResetPassword(req ResetPasswordRequest) error {
+	key := fmt.Sprintf("%s:%s", req.Email, "reset")
+	s.codesMutex.RLock()
+	codeData, exists := s.codes[key]
+	s.codesMutex.RUnlock()
+
+	if !exists {
+		return ErrInvalidVerificationCode
+	}
+
+	if codeData.IsUsed {
+		return ErrVerificationCodeUsed
+	}
+
+	if time.Now().After(codeData.ExpiresAt) {
+		return ErrVerificationCodeExpired
+	}
+
+	if codeData.Code != req.Code {
+		return ErrInvalidVerificationCode
+	}
+
+	s.codesMutex.Lock()
+	s.codes[key] = verificationCode{
+		Code:      codeData.Code,
+		Type:      codeData.Type,
+		ExpiresAt: codeData.ExpiresAt,
+		IsUsed:    true,
+	}
+	s.codesMutex.Unlock()
+
+	var user models.User
+	if err := database.DB.Where("email = ?", req.Email).First(&user).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return ErrUserNotFound
+		}
+		return err
+	}
+
+	hashedPassword, err := utils.HashPassword(req.Password)
+	if err != nil {
+		logger.Error("Failed to hash password", zap.Error(err))
+		return err
+	}
+
+	if err := database.DB.Model(&user).Update("password", hashedPassword).Error; err != nil {
+		logger.Error("Failed to reset password", zap.Error(err))
+		return err
+	}
+
+	if err := database.DB.Where("user_id = ?", user.ID).Delete(&models.RefreshToken{}).Error; err != nil {
+		logger.Warn("Failed to delete user refresh tokens after password reset", zap.Error(err))
+	}
+
+	logger.Info("User password reset", zap.Int64("user_id", user.ID), zap.String("email", req.Email))
+	return nil
 }
 
 func (s *UserService) UploadAvatar(userID int64, fileName string, fileSize int64, fileContent io.Reader) (string, error) {
