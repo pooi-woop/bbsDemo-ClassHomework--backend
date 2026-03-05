@@ -322,6 +322,25 @@ func (s *UserService) UpdateNickname(userID int64, nickname string) (*models.Use
 	return &user, nil
 }
 
+func (s *UserService) UpdateBio(userID int64, bio string) (*models.User, error) {
+	var user models.User
+	if err := database.DB.First(&user, userID).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrUserNotFound
+		}
+		return nil, err
+	}
+
+	user.Bio = bio
+	if err := database.DB.Save(&user).Error; err != nil {
+		logger.Error("Failed to update bio", zap.Error(err))
+		return nil, err
+	}
+
+	logger.Info("Bio updated", zap.Int64("user_id", user.ID))
+	return &user, nil
+}
+
 func (s *UserService) UploadAvatar(userID int64, fileName string, fileSize int64, fileContent io.Reader) (string, error) {
 	if fileSize > s.uploadConfig.MaxSize {
 		return "", ErrFileTooLarge

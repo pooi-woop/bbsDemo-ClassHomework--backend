@@ -436,6 +436,14 @@ go build
      -F "avatar=@/path/to/avatar.jpg"
    ```
 
+3. **更新简介**：
+   ```bash
+   curl -X PUT http://localhost:8080/api/profile/bio \
+     -H "Content-Type: application/json" \
+     -H "Authorization: Bearer your_access_token" \
+     -d '{"bio": "This is my bio"}'
+   ```
+
 ### 2. 前端集成
 
 1. **认证状态管理**：
@@ -488,6 +496,20 @@ go build
    - 配置生产环境的 config.yaml
    - 使用 PM2 或 systemd 管理服务
    - 配置反向代理（如 Nginx）
+
+### 5. 服务器管理
+
+1. **优雅关闭**：
+   - 服务器支持优雅关闭，会等待所有工作处理完毕后再关闭
+   - 默认等待超时为 30 秒
+
+2. **通过指令关闭**：
+   ```bash
+   ./bbsDemo shutdown
+   ```
+   - 此命令会尝试关闭服务器
+   - 当前实现为基础版本，实际生产环境建议使用进程管理工具
+   - 推荐使用 PM2 或 systemd 等进程管理工具来管理服务的启动和关闭
 
 ## 开发说明
 

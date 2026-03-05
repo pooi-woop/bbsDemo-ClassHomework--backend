@@ -15,6 +15,7 @@ type User struct {
 	Email       string     `gorm:"uniqueIndex;not null;type:varchar(255)" json:"email"`
 	Password    string     `gorm:"not null" json:"-"`
 	Nickname    string     `json:"nickname"`
+	Bio         string     `gorm:"type:varchar(500)" json:"bio"`//简介
 	Avatar      string     `json:"avatar"`
 	Status      int        `gorm:"default:1" json:"status"`
 	IsAdmin     bool       `gorm:"default:false" json:"is_admin"`

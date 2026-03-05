@@ -55,6 +55,7 @@ func InitRouter(userService *service.UserService, postService *service.PostServi
 
 		authorized.PUT("/profile/nickname", authHandler.UpdateNickname)
 		authorized.POST("/profile/avatar", authHandler.UploadAvatar)
+		authorized.PUT("/profile/bio", authHandler.UpdateBio)
 
 		authorized.GET("/my/posts", postHandler.GetMyPosts)
 		authorized.GET("/my/favorites", postHandler.GetFavorites)

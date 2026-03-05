@@ -205,6 +205,32 @@ func (h *AuthHandler) UpdateNickname(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"user": user})
 }
 
+func (h *AuthHandler) UpdateBio(c *gin.Context) {
+	userID, _ := c.Get("userID")
+
+	var req struct {
+		Bio string `json:"bio" binding:"max=500"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	user, err := h.userService.UpdateBio(userID.(int64), req.Bio)
+	if err != nil {
+		switch err {
+		case service.ErrUserNotFound:
+			c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+		default:
+			logger.Error("Failed to update bio", zap.Error(err))
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update bio"})
+		}
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"user": user})
+}
+
 func (h *AuthHandler) UploadAvatar(c *gin.Context) {
 	userID, _ := c.Get("userID")
 

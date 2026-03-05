@@ -230,6 +230,7 @@ Authorization: Bearer <access_token>
     "id": 1234567890123456789,
     "email": "user@example.com",
     "nickname": "User",
+    "bio": "",
     "avatar": "/uploads/avatar_1234567890123456789_1234567890.jpg",
     "status": 1,
     "is_admin": false,
@@ -325,6 +326,47 @@ avatar: <file>
 1. 正常上传：上传 jpg/png 图片
 2. 文件过大：上传 10MB 的图片
 3. 无效类型：上传 pdf 文件
+
+### 2.4 更新简介
+
+**请求：**
+```http
+PUT /api/profile/bio
+Content-Type: application/json
+Authorization: Bearer <access_token>
+
+{
+  "bio": "This is my bio"
+}
+```
+
+**响应：**
+```json
+{
+  "user": {
+    "id": 1234567890123456789,
+    "email": "user@example.com",
+    "nickname": "User",
+    "bio": "This is my bio",
+    "avatar": "",
+    "status": 1,
+    "is_admin": false,
+    "is_verified": true
+  }
+}
+```
+
+**错误返回：**
+| 状态码 | 错误信息 | 说明 |
+|--------|---------|------|
+| 400 | `{"error": "bio must be at most 500 characters"}` | 简介过长 |
+| 401 | `{"error": "Authorization header required"}` | 缺少认证头 |
+| 404 | `{"error": "User not found"}` | 用户不存在 |
+| 500 | `{"error": "Failed to update bio"}` | 更新失败 |
+
+**测试用例：**
+1. 正常更新：`{"bio": "This is my bio"}`
+2. 简介过长：`{"bio": "a very long bio that exceeds the maximum length of 500 characters and should be rejected by the server. This is just a test to see if the validation works correctly. The bio should not be longer than 500 characters. Let's see if this is enough to trigger the error."}`
 
 ## 3. 帖子接口
 

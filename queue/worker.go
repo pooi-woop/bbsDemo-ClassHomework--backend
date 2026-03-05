@@ -59,6 +59,26 @@ func (w *Worker) Stop() {
 	logger.Info("All workers stopped")
 }
 
+func (w *Worker) StopWithTimeout(timeout time.Duration) bool {
+	logger.Info("Stopping message queue workers with timeout", zap.Duration("timeout", timeout))
+	close(w.stopChan)
+
+	done := make(chan struct{})
+	go func() {
+		w.wg.Wait()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		logger.Info("All workers stopped gracefully")
+		return true
+	case <-time.After(timeout):
+		logger.Warn("Timeout waiting for workers to stop")
+		return false
+	}
+}
+
 func (w *Worker) processEmailQueue(workerID int) {
 	defer w.wg.Done()
 	logger.Info("Email worker started", zap.Int("worker_id", workerID))
