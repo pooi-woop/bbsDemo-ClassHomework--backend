@@ -138,6 +138,39 @@ func (h *PostHandler) ListPosts(c *gin.Context) {
 	})
 }
 
+func (h *PostHandler) SearchPosts(c *gin.Context) {
+	keyword := c.Query("keyword")
+	if keyword == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "keyword is required"})
+		return
+	}
+
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "10"))
+
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 || pageSize > 100 {
+		pageSize = 10
+	}
+
+	posts, total, err := h.postService.SearchPosts(keyword, page, pageSize)
+	if err != nil {
+		logger.Error("Failed to search posts", zap.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to search posts"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"posts":     posts,
+		"total":     total,
+		"page":      page,
+		"page_size": pageSize,
+		"keyword":   keyword,
+	})
+}
+
 func (h *PostHandler) CreateComment(c *gin.Context) {
 	userID, _ := c.Get("userID")
 

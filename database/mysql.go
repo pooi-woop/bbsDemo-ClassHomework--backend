@@ -68,8 +68,9 @@ func AutoMigrate() error {
 		&models.User{},
 		&models.RefreshToken{},
 		&models.Post{},
-		&models.Comment{},
 		&models.Like{},
+		&models.Comment{},
+
 		&models.Block{},
 		&models.FavoriteFolder{},
 		&models.Favorite{},

@@ -112,6 +112,7 @@ bbsDemo/
 - 支持帖子的创建、更新、删除
 - 浏览量通过 Redis 消息队列异步更新
 - 支持分页查询
+- 支持按标题和内容关键词搜索帖子
 
 **关键文件：**
 - `models/post.go` - 帖子数据模型
@@ -341,12 +342,17 @@ go build
    curl http://localhost:8080/api/posts?page=1&page_size=10
    ```
 
-3. **获取帖子详情**：
+3. **搜索帖子**：
+   ```bash
+   curl "http://localhost:8080/api/posts/search?keyword=Hello&page=1&page_size=10"
+   ```
+
+4. **获取帖子详情**：
    ```bash
    curl http://localhost:8080/api/posts/1
    ```
 
-4. **更新帖子**：
+5. **更新帖子**：
    ```bash
    curl -X PUT http://localhost:8080/api/posts/1 \
      -H "Content-Type: application/json" \
@@ -354,7 +360,7 @@ go build
      -d '{"title": "Updated Title", "content": "Updated content"}'
    ```
 
-5. **删除帖子**：
+6. **删除帖子**：
    ```bash
    curl -X DELETE http://localhost:8080/api/posts/1 \
      -H "Authorization: Bearer your_access_token"

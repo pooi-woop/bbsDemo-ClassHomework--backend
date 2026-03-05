@@ -36,6 +36,7 @@ func InitRouter(userService *service.UserService, postService *service.PostServi
 	posts := r.Group("/api/posts")
 	{
 		posts.GET("", postHandler.ListPosts)
+		posts.GET("/search", postHandler.SearchPosts)
 		posts.GET("/:id", postHandler.GetPost)
 		posts.GET("/:id/comments", postHandler.GetComments)
 	}

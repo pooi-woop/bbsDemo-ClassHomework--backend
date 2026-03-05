@@ -12,7 +12,7 @@ type User struct {
 	UpdatedAt time.Time      `json:"updated_at"`
 	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"`
 
-	Email       string     `gorm:"uniqueIndex;not null" json:"email"`
+	Email       string     `gorm:"uniqueIndex;not null;type:varchar(255)" json:"email"`
 	Password    string     `gorm:"not null" json:"-"`
 	Nickname    string     `json:"nickname"`
 	Avatar      string     `json:"avatar"`
@@ -43,7 +43,7 @@ type RefreshToken struct {
 	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"`
 
 	UserID    int64     `gorm:"index;not null" json:"user_id"`
-	Token     string    `gorm:"uniqueIndex;not null" json:"-"`
+	Token     string    `gorm:"uniqueIndex;not null;type:varchar(255);" json:"-"`
 	ExpiresAt time.Time `gorm:"not null" json:"expires_at"`
 	IsRevoked bool      `gorm:"default:false" json:"is_revoked"`
 	IP        string    `json:"ip"`

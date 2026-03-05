@@ -175,6 +175,31 @@ func (s *PostService) ListPosts(page, pageSize int) ([]models.Post, int64, error
 	return posts, total, nil
 }
 
+func (s *PostService) SearchPosts(keyword string, page, pageSize int) ([]models.Post, int64, error) {
+	var posts []models.Post
+	var total int64
+
+	offset := (page - 1) * pageSize
+
+	query := database.DB.Model(&models.Post{}).
+		Where("title LIKE ? OR content LIKE ?", "%"+keyword+"%", "%"+keyword+"%")
+
+	if err := query.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	if err := database.DB.Preload("User").
+		Where("title LIKE ? OR content LIKE ?", "%"+keyword+"%", "%"+keyword+"%").
+		Order("created_at DESC").
+		Offset(offset).
+		Limit(pageSize).
+		Find(&posts).Error; err != nil {
+		return nil, 0, err
+	}
+
+	return posts, total, nil
+}
+
 func (s *PostService) CreateComment(userID int64, req CreateCommentRequest) (*models.Comment, error) {
 	if req.PostID == nil && req.CommentID == nil {
 		return nil, errors.New("post_id or comment_id is required")
