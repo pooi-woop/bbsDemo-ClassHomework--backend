@@ -449,7 +449,19 @@ go build
 
 #### 1.6 个人资料操作
 
-1. **更新昵称**：
+1. **获取当前用户信息**：
+   ```bash
+   curl http://localhost:8080/api/profile \
+     -H "Authorization: Bearer your_access_token"
+   ```
+
+2. **获取其他用户信息**：
+   ```bash
+   curl http://localhost:8080/api/users/1234567890123456789 \
+     -H "Authorization: Bearer your_access_token"
+   ```
+
+3. **更新昵称**：
    ```bash
    curl -X PUT http://localhost:8080/api/profile/nickname \
      -H "Content-Type: application/json" \
@@ -457,14 +469,14 @@ go build
      -d '{"nickname": "New Nickname"}'
    ```
 
-2. **上传头像**：
+4. **上传头像**：
    ```bash
    curl -X POST http://localhost:8080/api/profile/avatar \
      -H "Authorization: Bearer your_access_token" \
      -F "avatar=@/path/to/avatar.jpg"
    ```
 
-3. **更新简介**：
+5. **更新简介**：
    ```bash
    curl -X PUT http://localhost:8080/api/profile/bio \
      -H "Content-Type: application/json" \

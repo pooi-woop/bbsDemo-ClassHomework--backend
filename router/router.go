@@ -36,6 +36,7 @@ func InitRouter(userService *service.UserService, postService *service.PostServi
 	}
 
 	posts := r.Group("/api/posts")
+	posts.Use(middleware.OptionalAuth())
 	{
 		posts.GET("", postHandler.ListPosts)
 		posts.GET("/search", postHandler.SearchPosts)
@@ -44,6 +45,7 @@ func InitRouter(userService *service.UserService, postService *service.PostServi
 	}
 
 	comments := r.Group("/api/comments")
+	comments.Use(middleware.OptionalAuth())
 	{
 		comments.GET("/:id/replies", postHandler.GetReplies)
 	}
@@ -52,6 +54,7 @@ func InitRouter(userService *service.UserService, postService *service.PostServi
 	authorized.Use(middleware.AuthRequired())
 	{
 		authorized.GET("/profile", authHandler.GetProfile)
+		authorized.GET("/users/:id", authHandler.GetUserInfo)
 		authorized.POST("/logout", authHandler.Logout)
 		authorized.POST("/logout-all", authHandler.LogoutAll)
 

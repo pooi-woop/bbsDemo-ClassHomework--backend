@@ -323,7 +323,46 @@ Authorization: Bearer <access_token>
 1. 正常获取：提供有效的 access_token
 2. 用户不存在：删除用户后尝试获取
 
-### 2.2 更新昵称
+### 2.2 获取其他用户信息
+
+**请求：**
+```http
+GET /api/users/1234567890123456789
+Authorization: Bearer <access_token>
+```
+
+**响应：**
+```json
+{
+  "user": {
+    "id": "1234567890123456789",
+    "email": "user@example.com",
+    "nickname": "User",
+    "bio": "",
+    "avatar": "/uploads/avatar_1234567890123456789_1234567890.jpg",
+    "status": 1,
+    "is_admin": false,
+    "is_verified": true,
+    "created_at": "2023-01-01T00:00:00Z",
+    "last_login_at": "2023-01-01T00:00:00Z"
+  }
+}
+```
+
+**错误返回：**
+| 状态码 | 错误信息 | 说明 |
+|--------|---------|------|
+| 400 | `{"error": "Invalid user ID"}` | 用户ID格式错误 |
+| 401 | `{"error": "Authorization header required"}` | 缺少认证头 |
+| 404 | `{"error": "User not found"}` | 用户不存在 |
+| 500 | `{"error": "Failed to get user info"}` | 获取失败 |
+
+**测试用例：**
+1. 正常获取：提供有效的用户ID
+2. 用户不存在：使用不存在的用户ID
+3. ID格式错误：使用非数字ID
+
+### 2.3 更新昵称
 
 **请求：**
 ```http
@@ -465,6 +504,8 @@ GET /api/posts?page=1&page_size=10
       "comment_count": 3,
       "created_at": "2023-01-01T00:00:00Z",
       "updated_at": "2023-01-01T00:00:00Z",
+      "is_liked": false,
+      "is_favorited": false,
       "user": {
         "id": "1234567890123456789",
         "email": "user@example.com",
@@ -509,6 +550,8 @@ GET /api/posts/search?keyword=Hello&page=1&page_size=10
       "comment_count": 3,
       "created_at": "2023-01-01T00:00:00Z",
       "updated_at": "2023-01-01T00:00:00Z",
+      "is_liked": false,
+      "is_favorited": false,
       "user": {
         "id": "1234567890123456789",
         "email": "user@example.com",
@@ -555,12 +598,30 @@ GET /api/posts/1234567890123456789
     "comment_count": 3,
     "created_at": "2023-01-01T00:00:00Z",
     "updated_at": "2023-01-01T00:00:00Z",
+    "is_liked": false,
+    "is_favorited": false,
     "user": {
       "id": "1234567890123456789",
       "email": "user@example.com",
       "nickname": "User",
       "avatar": ""
-    }
+    },
+    "comments": [
+      {
+        "id": 1,
+        "post_id": "1234567890123456789",
+        "user_id": "1234567890123456789",
+        "content": "Great post!",
+        "like_count": 2,
+        "created_at": "2023-01-01T00:00:00Z",
+        "user": {
+          "id": "1234567890123456789",
+          "email": "user@example.com",
+          "nickname": "User",
+          "avatar": ""
+        }
+      }
+    ]
   }
 }
 ```
@@ -1316,6 +1377,7 @@ Authorization: Bearer <access_token>
 1. 正常拉黑：`POST /api/users/2/block`
 2. 重复拉黑：`POST /api/users/2/block`（已拉黑后再拉黑）
 3. 拉黑自己：`POST /api/users/1/block`（尝试拉黑自己）
+4. 重新拉黑：`POST /api/users/2/block`（已取消拉黑后再拉黑）
 
 ### 7.2 取消拉黑
 
@@ -1332,6 +1394,11 @@ Authorization: Bearer <access_token>
 }
 ```
 
+**说明：**
+- 取消拉黑后不会删除记录，而是保留记录并更新 `unblocked_at` 字段
+- 可以通过 `unblocked_at` 字段判断用户是否已取消拉黑
+- 取消拉黑后可以重新拉黑该用户
+
 **错误返回：**
 | 状态码 | 错误信息 | 说明 |
 |--------|---------|------|
@@ -1342,6 +1409,7 @@ Authorization: Bearer <access_token>
 **测试用例：**
 1. 正常取消：`DELETE /api/users/2/block`
 2. 未拉黑取消：`DELETE /api/users/2/block`（未拉黑时取消）
+3. 重复取消：`DELETE /api/users/2/block`（已取消拉黑后再次取消）
 
 ### 7.3 获取拉黑列表
 
@@ -1359,12 +1427,37 @@ Authorization: Bearer <access_token>
       "id": 1234567890123456789,
       "email": "user2@example.com",
       "nickname": "User2",
-      "avatar": ""
+      "bio": "这是用户简介",
+      "avatar": "",
+      "is_admin": false,
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": "2024-01-01T00:00:00Z",
+      "deleted_at": null,
+      "blocked_at": "2024-01-01T00:00:00Z",
+      "unblocked_at": null
+    },
+    {
+      "id": 1234567890123456790,
+      "email": "user3@example.com",
+      "nickname": "User3",
+      "bio": "",
+      "avatar": "",
+      "is_admin": false,
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": "2024-01-01T00:00:00Z",
+      "deleted_at": null,
+      "blocked_at": "2024-01-01T00:00:00Z",
+      "unblocked_at": "2024-01-02T00:00:00Z"
     }
   ],
-  "total": 1
+  "total": 2
 }
 ```
+
+**字段说明：**
+- `blocked_at`: 拉黑时间
+- `unblocked_at`: 取消拉黑时间（null 表示未取消拉黑）
+- 可以通过 `unblocked_at` 字段判断用户是否已取消拉黑
 
 **错误返回：**
 | 状态码 | 错误信息 | 说明 |

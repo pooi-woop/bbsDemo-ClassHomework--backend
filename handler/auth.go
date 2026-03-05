@@ -4,6 +4,7 @@ import (
 	"bbsDemo/logger"
 	"bbsDemo/service"
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
@@ -172,6 +173,32 @@ func (h *AuthHandler) GetProfile(c *gin.Context) {
 		default:
 			logger.Error("Failed to get user", zap.Error(err))
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get profile"})
+		}
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"user": user})
+}
+
+func (h *AuthHandler) GetUserInfo(c *gin.Context) {
+	userIDStr := c.Param("id")
+	userID, err := strconv.ParseInt(userIDStr, 10, 64)
+	if err != nil {
+		logger.Error("Invalid user ID", zap.String("user_id_str", userIDStr), zap.Error(err))
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+		return
+	}
+
+	logger.Info("Get user info request", zap.Int64("user_id", userID))
+
+	user, err := h.userService.GetUserByID(userID)
+	if err != nil {
+		switch err {
+		case service.ErrUserNotFound:
+			c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+		default:
+			logger.Error("Failed to get user", zap.Error(err))
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get user info"})
 		}
 		return
 	}

@@ -152,15 +152,15 @@ func (w *Worker) processViewCountQueue(workerID int) {
 			}
 
 			if err := database.DB.Model(&models.Post{}).
-				Where("id = ?", view.PostID).
-				UpdateColumn("views", gorm.Expr("views + 1")).Error; err != nil {
-				logger.Error("Failed to update view count",
-					zap.Int64("post_id", view.PostID),
-					zap.Error(err))
-			} else {
-				logger.Debug("View count updated",
-					zap.Int64("post_id", view.PostID))
-			}
+			Where("id = ?", view.PostID).
+			UpdateColumn("views", gorm.Expr("views + 1")).Error; err != nil {
+			logger.Error("Failed to update view count",
+				zap.Int64("post_id", view.PostID),
+				zap.Error(err))
+		} else {
+			logger.Info("View count updated",
+				zap.Int64("post_id", view.PostID))
+		}
 		}
 	}
 }

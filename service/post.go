@@ -6,6 +6,8 @@ import (
 	"bbsDemo/models"
 	"bbsDemo/utils"
 	"errors"
+	"strconv"
+	"time"
 
 	"go.uber.org/zap"
 	"gorm.io/gorm"
@@ -36,6 +38,20 @@ type FavoriteWithFolder struct {
 	CreatedAt  string      `json:"created_at"`
 }
 
+type BlockedUserWithStatus struct {
+	ID          int64      `json:"id"`
+	Email       string     `json:"email"`
+	Nickname    string     `json:"nickname"`
+	Bio         string     `json:"bio"`
+	Avatar      string     `json:"avatar"`
+	IsAdmin     bool       `json:"is_admin"`
+	CreatedAt   time.Time  `json:"created_at"`
+	UpdatedAt   time.Time  `json:"updated_at"`
+	DeletedAt   *time.Time `json:"deleted_at,omitempty"`
+	BlockedAt   time.Time  `json:"blocked_at"`
+	UnblockedAt *time.Time `json:"unblocked_at,omitempty"`
+}
+
 func NewPostService() *PostService {
 	return &PostService{}
 }
@@ -51,9 +67,15 @@ type UpdatePostRequest struct {
 }
 
 type CreateCommentRequest struct {
-	PostID    *uint  `json:"post_id"`
-	CommentID *uint  `json:"comment_id"`
-	Content   string `json:"content" binding:"required"`
+	PostID    interface{} `json:"post_id"`
+	CommentID interface{} `json:"comment_id"`
+	Content   string      `json:"content" binding:"required"`
+}
+
+type PostWithStatus struct {
+	models.Post
+	IsLiked     bool `json:"is_liked"`
+	IsFavorited bool `json:"is_favorited"`
 }
 
 type CreateFolderRequest struct {
@@ -65,8 +87,8 @@ type UpdateFolderRequest struct {
 }
 
 type FavoritePostRequest struct {
-	PostID   int64 `json:"post_id" binding:"required"`
-	FolderID uint  `json:"folder_id" binding:"required"`
+	PostID   string `json:"post_id" binding:"required"`
+	FolderID uint   `json:"folder_id" binding:"required"`
 }
 
 func (s *PostService) CreatePost(userID int64, req CreatePostRequest) (*models.Post, error) {
@@ -138,7 +160,12 @@ func (s *PostService) DeletePost(userID int64, postID int64) error {
 	return nil
 }
 
-func (s *PostService) GetPost(postID int64) (*models.Post, error) {
+type PostWithStatusAndComments struct {
+	PostWithStatus
+	Comments []models.Comment `json:"comments"`
+}
+
+func (s *PostService) GetPost(postID, userID int64) (*PostWithStatusAndComments, error) {
 	var post models.Post
 	if err := database.DB.Preload("User").First(&post, postID).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -151,20 +178,90 @@ func (s *PostService) GetPost(postID int64) (*models.Post, error) {
 		logger.Error("Failed to push view count to queue", zap.Error(err))
 	}
 
-	return &post, nil
+	// 创建带状态的帖子
+	postWithStatus := PostWithStatus{
+		Post:        post,
+		IsLiked:     false,
+		IsFavorited: false,
+	}
+
+	// 如果用户已登录，检查点赞和收藏状态
+	if userID > 0 {
+		// 检查是否点赞
+		var like models.Like
+		if err := database.DB.Where("user_id = ? AND post_id = ?", userID, post.ID).First(&like).Error; err == nil {
+			postWithStatus.IsLiked = true
+		}
+
+		// 检查是否收藏
+		var favorite models.Favorite
+		if err := database.DB.Where("user_id = ? AND post_id = ?", userID, post.ID).First(&favorite).Error; err == nil {
+			postWithStatus.IsFavorited = true
+		}
+	}
+
+	// 查询帖子的所有评论
+	var comments []models.Comment
+	if err := database.DB.Where("post_id = ?", postID).
+		Preload("User").
+		Preload("Comment"). // 加载回复的评论
+		Order("created_at ASC").
+		Find(&comments).Error; err != nil {
+		logger.Error("Failed to get comments", zap.Error(err))
+		// 不返回错误，只记录日志
+	}
+
+	// 为评论添加用户的点赞状态
+	if userID > 0 {
+		for i := range comments {
+			var like models.Like
+			if err := database.DB.Where("user_id = ? AND comment_id = ?", userID, comments[i].ID).First(&like).Error; err == nil {
+				// 这里可以添加评论的点赞状态，需要在 Comment 模型中添加字段
+			}
+		}
+	}
+
+	return &PostWithStatusAndComments{
+		PostWithStatus: postWithStatus,
+		Comments:       comments,
+	}, nil
 }
 
-func (s *PostService) ListPosts(page, pageSize int) ([]models.Post, int64, error) {
+func (s *PostService) ListPosts(userID int64, keyword string, page, pageSize int) ([]PostWithStatus, int64, error) {
 	var posts []models.Post
 	var total int64
 
 	offset := (page - 1) * pageSize
 
-	if err := database.DB.Model(&models.Post{}).Count(&total).Error; err != nil {
+	logger.Info("List posts service",
+		zap.Int64("user_id", userID),
+		zap.String("keyword", keyword),
+		zap.Int("page", page),
+		zap.Int("page_size", pageSize))
+
+	// 构建基础查询
+	query := database.DB.Model(&models.Post{})
+
+	// 处理搜索关键字
+	if keyword != "" {
+		logger.Info("Searching posts with keyword", zap.String("keyword", keyword))
+		query = query.Where("title LIKE ? OR content LIKE ?", "%"+keyword+"%", "%"+keyword+"%")
+	}
+
+	// 如果用户已登录，过滤被拉黑用户的内容
+	if userID > 0 {
+		var blockedIDs []int64
+		database.DB.Model(&models.Block{}).Where("user_id = ? AND unblocked_at IS NULL", userID).Pluck("blocked_id", &blockedIDs)
+		if len(blockedIDs) > 0 {
+			query = query.Where("user_id NOT IN ?", blockedIDs)
+		}
+	}
+
+	if err := query.Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
 
-	if err := database.DB.Preload("User").
+	if err := query.Preload("User").
 		Order("created_at DESC").
 		Offset(offset).
 		Limit(pageSize).
@@ -172,10 +269,35 @@ func (s *PostService) ListPosts(page, pageSize int) ([]models.Post, int64, error
 		return nil, 0, err
 	}
 
-	return posts, total, nil
+	// 转换为带状态的帖子
+	postsWithStatus := make([]PostWithStatus, len(posts))
+	for i, post := range posts {
+		postsWithStatus[i] = PostWithStatus{
+			Post:        post,
+			IsLiked:     false,
+			IsFavorited: false,
+		}
+
+		// 如果用户已登录，检查点赞和收藏状态
+		if userID > 0 {
+			// 检查是否点赞
+			var like models.Like
+			if err := database.DB.Where("user_id = ? AND post_id = ?", userID, post.ID).First(&like).Error; err == nil {
+				postsWithStatus[i].IsLiked = true
+			}
+
+			// 检查是否收藏
+			var favorite models.Favorite
+			if err := database.DB.Where("user_id = ? AND post_id = ?", userID, post.ID).First(&favorite).Error; err == nil {
+				postsWithStatus[i].IsFavorited = true
+			}
+		}
+	}
+
+	return postsWithStatus, total, nil
 }
 
-func (s *PostService) SearchPosts(keyword string, page, pageSize int) ([]models.Post, int64, error) {
+func (s *PostService) SearchPosts(userID int64, keyword string, page, pageSize int) ([]PostWithStatus, int64, error) {
 	var posts []models.Post
 	var total int64
 
@@ -184,12 +306,20 @@ func (s *PostService) SearchPosts(keyword string, page, pageSize int) ([]models.
 	query := database.DB.Model(&models.Post{}).
 		Where("title LIKE ? OR content LIKE ?", "%"+keyword+"%", "%"+keyword+"%")
 
+	// 如果用户已登录，过滤被拉黑用户的内容
+	if userID > 0 {
+		var blockedIDs []int64
+		database.DB.Model(&models.Block{}).Where("user_id = ? AND unblocked_at IS NULL", userID).Pluck("blocked_id", &blockedIDs)
+		if len(blockedIDs) > 0 {
+			query = query.Where("user_id NOT IN ?", blockedIDs)
+		}
+	}
+
 	if err := query.Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
 
-	if err := database.DB.Preload("User").
-		Where("title LIKE ? OR content LIKE ?", "%"+keyword+"%", "%"+keyword+"%").
+	if err := query.Preload("User").
 		Order("created_at DESC").
 		Offset(offset).
 		Limit(pageSize).
@@ -197,19 +327,115 @@ func (s *PostService) SearchPosts(keyword string, page, pageSize int) ([]models.
 		return nil, 0, err
 	}
 
-	return posts, total, nil
+	// 转换为带状态的帖子
+	postsWithStatus := make([]PostWithStatus, len(posts))
+	for i, post := range posts {
+		postsWithStatus[i] = PostWithStatus{
+			Post:        post,
+			IsLiked:     false,
+			IsFavorited: false,
+		}
+
+		// 如果用户已登录，检查点赞和收藏状态
+		if userID > 0 {
+			// 检查是否点赞
+			var like models.Like
+			if err := database.DB.Where("user_id = ? AND post_id = ?", userID, post.ID).First(&like).Error; err == nil {
+				postsWithStatus[i].IsLiked = true
+			}
+
+			// 检查是否收藏
+			var favorite models.Favorite
+			if err := database.DB.Where("user_id = ? AND post_id = ?", userID, post.ID).First(&favorite).Error; err == nil {
+				postsWithStatus[i].IsFavorited = true
+			}
+		}
+	}
+
+	return postsWithStatus, total, nil
 }
 
 func (s *PostService) CreateComment(userID int64, req CreateCommentRequest) (*models.Comment, error) {
+	logger.Info("Create comment request",
+		zap.Int64("user_id", userID),
+		zap.Any("post_id", req.PostID),
+		zap.Any("comment_id", req.CommentID),
+		zap.String("content", req.Content))
+
 	if req.PostID == nil && req.CommentID == nil {
+		logger.Error("Neither post_id nor comment_id provided")
 		return nil, errors.New("post_id or comment_id is required")
 	}
 
 	comment := models.Comment{
-		UserID:    userID,
-		PostID:    req.PostID,
-		CommentID: req.CommentID,
-		Content:   req.Content,
+		UserID:  userID,
+		Content: req.Content,
+	}
+
+	// 处理 PostID（int64 类型）
+	if req.PostID != nil {
+		var postIDStr string
+		switch v := req.PostID.(type) {
+		case string:
+			postIDStr = v
+		case float64:
+			postIDStr = strconv.FormatInt(int64(v), 10)
+		default:
+			logger.Error("Invalid post_id type", zap.Any("post_id", req.PostID))
+			return nil, errors.New("invalid post_id type")
+		}
+		// 直接解析为 int64
+		postID, err := strconv.ParseInt(postIDStr, 10, 64)
+		if err != nil {
+			logger.Error("Invalid post_id format", zap.String("post_id_str", postIDStr), zap.Error(err))
+			return nil, errors.New("invalid post_id")
+		}
+		// 检查帖子是否存在
+		var post models.Post
+		if err := database.DB.First(&post, postID).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				logger.Error("Post not found", zap.Int64("post_id", postID))
+				return nil, errors.New("post not found")
+			}
+			logger.Error("Failed to find post", zap.Int64("post_id", postID), zap.Error(err))
+			return nil, err
+		}
+		logger.Info("Post found", zap.Int64("post_id", postID), zap.String("title", post.Title))
+		// 将 int64 转换为 uint 存储
+		postIDUint := uint(postID)
+		comment.PostID = &postIDUint
+	}
+
+	// 处理 CommentID（uint 类型）
+	if req.CommentID != nil {
+		var commentIDStr string
+		switch v := req.CommentID.(type) {
+		case string:
+			commentIDStr = v
+		case float64:
+			commentIDStr = strconv.FormatInt(int64(v), 10)
+		default:
+			logger.Error("Invalid comment_id type", zap.Any("comment_id", req.CommentID))
+			return nil, errors.New("invalid comment_id type")
+		}
+		commentID, err := strconv.ParseUint(commentIDStr, 10, 32)
+		if err != nil {
+			logger.Error("Invalid comment_id format", zap.String("comment_id_str", commentIDStr), zap.Error(err))
+			return nil, errors.New("invalid comment_id")
+		}
+		// 检查评论是否存在
+		var parentComment models.Comment
+		if err := database.DB.First(&parentComment, commentID).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				logger.Error("Parent comment not found", zap.Uint64("comment_id", commentID))
+				return nil, errors.New("parent comment not found")
+			}
+			logger.Error("Failed to find parent comment", zap.Uint64("comment_id", commentID), zap.Error(err))
+			return nil, err
+		}
+		logger.Info("Parent comment found", zap.Uint64("comment_id", commentID))
+		commentIDUint := uint(commentID)
+		comment.CommentID = &commentIDUint
 	}
 
 	if err := database.DB.Create(&comment).Error; err != nil {
@@ -463,11 +689,25 @@ func (s *PostService) BlockUser(userID, blockedID int64) error {
 		return ErrCannotBlockSelf
 	}
 
+	// 检查是否已经被拉黑且未取消
 	var existingBlock models.Block
-	if err := database.DB.Where("user_id = ? AND blocked_id = ?", userID, blockedID).First(&existingBlock).Error; err == nil {
+	if err := database.DB.Where("user_id = ? AND blocked_id = ? AND unblocked_at IS NULL", userID, blockedID).First(&existingBlock).Error; err == nil {
 		return ErrAlreadyBlocked
 	}
 
+	// 检查是否已经有记录但已取消拉黑
+	var existingBlockRecord models.Block
+	if err := database.DB.Where("user_id = ? AND blocked_id = ?", userID, blockedID).First(&existingBlockRecord).Error; err == nil {
+		// 如果已经取消拉黑，重新拉黑
+		if err := database.DB.Model(&existingBlockRecord).Update("unblocked_at", nil).Error; err != nil {
+			logger.Error("Failed to re-block user", zap.Error(err))
+			return err
+		}
+		logger.Info("User re-blocked", zap.Int64("user_id", userID), zap.Int64("blocked_id", blockedID))
+		return nil
+	}
+
+	// 创建新的拉黑记录
 	block := models.Block{
 		UserID:    userID,
 		BlockedID: blockedID,
@@ -484,14 +724,15 @@ func (s *PostService) BlockUser(userID, blockedID int64) error {
 
 func (s *PostService) UnblockUser(userID, blockedID int64) error {
 	var block models.Block
-	if err := database.DB.Where("user_id = ? AND blocked_id = ?", userID, blockedID).First(&block).Error; err != nil {
+	if err := database.DB.Where("user_id = ? AND blocked_id = ? AND unblocked_at IS NULL", userID, blockedID).First(&block).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return ErrNotBlocked
 		}
 		return err
 	}
 
-	if err := database.DB.Delete(&block).Error; err != nil {
+	now := time.Now()
+	if err := database.DB.Model(&block).Update("unblocked_at", &now).Error; err != nil {
 		logger.Error("Failed to unblock user", zap.Error(err))
 		return err
 	}
@@ -500,30 +741,58 @@ func (s *PostService) UnblockUser(userID, blockedID int64) error {
 	return nil
 }
 
-func (s *PostService) GetBlockedUsers(userID int64, page, pageSize int) ([]models.User, int64, error) {
-	var users []models.User
+func (s *PostService) IsBlocked(userID, blockedID int64) (bool, error) {
+	var block models.Block
+	err := database.DB.Where("user_id = ? AND blocked_id = ? AND unblocked_at IS NULL", userID, blockedID).First(&block).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return false, nil
+		}
+		return false, err
+	}
+	return true, nil
+}
+
+func (s *PostService) GetBlockedUsers(userID int64, page, pageSize int) ([]BlockedUserWithStatus, int64, error) {
+	var blockedUsers []BlockedUserWithStatus
 	var total int64
 
 	offset := (page - 1) * pageSize
 
-	query := database.DB.Model(&models.User{}).
-		Joins("JOIN blocks ON users.id = blocks.blocked_id").
+	query := database.DB.Table("blocks").
+		Select(`
+			users.id,
+			users.email,
+			users.nickname,
+			users.bio,
+			users.avatar,
+			users.is_admin,
+			users.created_at,
+			users.updated_at,
+			users.deleted_at,
+			blocks.created_at as blocked_at,
+			blocks.unblocked_at
+		`).
+		Joins("JOIN users ON users.id = blocks.blocked_id").
 		Where("blocks.user_id = ?", userID)
 
 	if err := query.Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
 
-	if err := query.Offset(offset).Limit(pageSize).Find(&users).Error; err != nil {
+	if err := query.Offset(offset).Limit(pageSize).Find(&blockedUsers).Error; err != nil {
 		return nil, 0, err
 	}
 
-	return users, total, nil
+	return blockedUsers, total, nil
 }
 
 func (s *PostService) CreateFolder(userID int64, req CreateFolderRequest) (*models.FavoriteFolder, error) {
+	logger.Info("Service create folder called", zap.Int64("user_id", userID), zap.String("folder_name", req.Name))
+
 	var existingFolder models.FavoriteFolder
 	if err := database.DB.Where("user_id = ? AND name = ?", userID, req.Name).First(&existingFolder).Error; err == nil {
+		logger.Warn("Folder already exists", zap.Int64("user_id", userID), zap.String("folder_name", req.Name))
 		return nil, ErrFolderExists
 	}
 
@@ -533,11 +802,11 @@ func (s *PostService) CreateFolder(userID int64, req CreateFolderRequest) (*mode
 	}
 
 	if err := database.DB.Create(&folder).Error; err != nil {
-		logger.Error("Failed to create folder", zap.Error(err))
+		logger.Error("Failed to create folder in database", zap.Error(err), zap.Int64("user_id", userID), zap.String("folder_name", req.Name))
 		return nil, err
 	}
 
-	logger.Info("Folder created", zap.Uint("folder_id", folder.ID), zap.Int64("user_id", userID))
+	logger.Info("Folder created successfully in database", zap.Uint("folder_id", folder.ID), zap.Int64("user_id", userID))
 	return &folder, nil
 }
 
@@ -624,6 +893,12 @@ func (s *PostService) GetOrCreateDefaultFolder(userID int64) (*models.FavoriteFo
 }
 
 func (s *PostService) FavoritePost(userID int64, req FavoritePostRequest) error {
+	// 将字符串 PostID 转换为 int64
+	postID, err := strconv.ParseInt(req.PostID, 10, 64)
+	if err != nil {
+		return errors.New("invalid post_id")
+	}
+
 	var folder models.FavoriteFolder
 	if err := database.DB.First(&folder, req.FolderID).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -637,13 +912,13 @@ func (s *PostService) FavoritePost(userID int64, req FavoritePostRequest) error 
 	}
 
 	var existingFavorite models.Favorite
-	if err := database.DB.Where("user_id = ? AND post_id = ?", userID, req.PostID).First(&existingFavorite).Error; err == nil {
+	if err := database.DB.Where("user_id = ? AND post_id = ?", userID, postID).First(&existingFavorite).Error; err == nil {
 		return ErrAlreadyFavorited
 	}
 
 	favorite := models.Favorite{
 		UserID:   userID,
-		PostID:   req.PostID,
+		PostID:   postID,
 		FolderID: req.FolderID,
 	}
 
@@ -652,7 +927,7 @@ func (s *PostService) FavoritePost(userID int64, req FavoritePostRequest) error 
 		return err
 	}
 
-	logger.Info("Post favorited", zap.Int64("post_id", req.PostID), zap.Int64("user_id", userID), zap.Uint("folder_id", req.FolderID))
+	logger.Info("Post favorited", zap.Int64("post_id", postID), zap.Int64("user_id", userID), zap.Uint("folder_id", req.FolderID))
 	return nil
 }
 

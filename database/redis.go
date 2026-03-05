@@ -97,7 +97,8 @@ func PushMessage(queueKey string, payload interface{}) error {
 }
 
 func PopMessage(queueKey string) (*RedisMessage, error) {
-	result, err := RedisClient.BRPop(redisCtx, 0, queueKey).Result()
+	// 使用 1 秒超时，避免永久阻塞，让 Worker 可以响应停止信号
+	result, err := RedisClient.BRPop(redisCtx, time.Second, queueKey).Result()
 	if err != nil {
 		if err == redis.Nil {
 			return nil, nil

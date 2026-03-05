@@ -97,7 +97,13 @@ func (h *PostHandler) GetPost(c *gin.Context) {
 		return
 	}
 
-	post, err := h.postService.GetPost(postID)
+	// 获取当前用户ID（如果已登录）
+	var userID int64
+	if id, exists := c.Get("userID"); exists {
+		userID = id.(int64)
+	}
+
+	post, err := h.postService.GetPost(postID, userID)
 	if err != nil {
 		switch err {
 		case service.ErrPostNotFound:
@@ -115,6 +121,7 @@ func (h *PostHandler) GetPost(c *gin.Context) {
 func (h *PostHandler) ListPosts(c *gin.Context) {
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "10"))
+	keyword := c.Query("search")
 
 	if page < 1 {
 		page = 1
@@ -123,7 +130,19 @@ func (h *PostHandler) ListPosts(c *gin.Context) {
 		pageSize = 10
 	}
 
-	posts, total, err := h.postService.ListPosts(page, pageSize)
+	// 获取当前用户ID（如果已登录）
+	var userID int64
+	if id, exists := c.Get("userID"); exists {
+		userID = id.(int64)
+	}
+
+	logger.Info("List posts request",
+		zap.Int("page", page),
+		zap.Int("page_size", pageSize),
+		zap.String("search_keyword", keyword),
+		zap.Int64("user_id", userID))
+
+	posts, total, err := h.postService.ListPosts(userID, keyword, page, pageSize)
 	if err != nil {
 		logger.Error("Failed to list posts", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to list posts"})
@@ -155,7 +174,13 @@ func (h *PostHandler) SearchPosts(c *gin.Context) {
 		pageSize = 10
 	}
 
-	posts, total, err := h.postService.SearchPosts(keyword, page, pageSize)
+	// 获取当前用户ID（如果已登录）
+	var userID int64
+	if id, exists := c.Get("userID"); exists {
+		userID = id.(int64)
+	}
+
+	posts, total, err := h.postService.SearchPosts(userID, keyword, page, pageSize)
 	if err != nil {
 		logger.Error("Failed to search posts", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to search posts"})
@@ -533,25 +558,29 @@ func (h *PostHandler) GetBlockedUsers(c *gin.Context) {
 
 func (h *PostHandler) CreateFolder(c *gin.Context) {
 	userID, _ := c.Get("userID")
+	logger.Info("Create folder request received", zap.Int64("user_id", userID.(int64)))
 
 	var req service.CreateFolderRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
+		logger.Error("Failed to bind JSON", zap.Error(err))
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	logger.Info("Create folder request parsed", zap.String("folder_name", req.Name))
 
 	folder, err := h.postService.CreateFolder(userID.(int64), req)
 	if err != nil {
+		logger.Error("Failed to create folder", zap.Error(err))
 		switch err {
 		case service.ErrFolderExists:
 			c.JSON(http.StatusConflict, gin.H{"error": "Folder already exists"})
 		default:
-			logger.Error("Failed to create folder", zap.Error(err))
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create folder"})
 		}
 		return
 	}
 
+	logger.Info("Folder created successfully", zap.Uint("folder_id", folder.ID))
 	c.JSON(http.StatusCreated, gin.H{"folder": folder})
 }
 
