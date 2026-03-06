@@ -322,6 +322,12 @@ func (s *PostService) SearchPosts(userID int64, keyword string, page, pageSize i
 
 	offset := (page - 1) * pageSize
 
+	logger.Info("Search posts",
+		zap.Int64("user_id", userID),
+		zap.String("keyword", keyword),
+		zap.Int("page", page),
+		zap.Int("page_size", pageSize))
+
 	query := database.DB.Model(&models.Post{}).Preload("User").
 		Where("title LIKE ? OR content LIKE ?", "%"+keyword+"%", "%"+keyword+"%")
 
