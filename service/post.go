@@ -195,7 +195,13 @@ func (s *PostService) GetPost(postID, userID int64) (*PostWithStatusAndComments,
 
 		// 检查是否收藏
 		var favorite models.Favorite
-		if err := database.DB.Where("user_id = ? AND post_id = ?", userID, post.ID).First(&favorite).Error; err == nil {
+		err := database.DB.Where("user_id = ? AND post_id = ?", userID, post.ID).First(&favorite).Error
+		logger.Info("Check favorite status",
+			zap.Int64("user_id", userID),
+			zap.Int64("post_id", post.ID),
+			zap.Bool("found", err == nil),
+			zap.Error(err))
+		if err == nil {
 			postWithStatus.IsFavorited = true
 		}
 	}
@@ -261,7 +267,20 @@ func (s *PostService) ListPosts(userID int64, keyword string, page, pageSize int
 		return nil, 0, err
 	}
 
-	if err := query.Preload("User").
+	// 重新构建查询以包含 Preload
+	findQuery := database.DB.Model(&models.Post{}).Preload("User")
+	if keyword != "" {
+		findQuery = findQuery.Where("title LIKE ? OR content LIKE ?", "%"+keyword+"%", "%"+keyword+"%")
+	}
+	if userID > 0 {
+		var blockedIDs []int64
+		database.DB.Model(&models.Block{}).Where("user_id = ? AND unblocked_at IS NULL", userID).Pluck("blocked_id", &blockedIDs)
+		if len(blockedIDs) > 0 {
+			findQuery = findQuery.Where("user_id NOT IN ?", blockedIDs)
+		}
+	}
+
+	if err := findQuery.
 		Order("created_at DESC").
 		Offset(offset).
 		Limit(pageSize).
@@ -303,13 +322,13 @@ func (s *PostService) SearchPosts(userID int64, keyword string, page, pageSize i
 
 	offset := (page - 1) * pageSize
 
-	query := database.DB.Model(&models.Post{}).
+	query := database.DB.Model(&models.Post{}).Preload("User").
 		Where("title LIKE ? OR content LIKE ?", "%"+keyword+"%", "%"+keyword+"%")
 
 	// 如果用户已登录，过滤被拉黑用户的内容
 	if userID > 0 {
 		var blockedIDs []int64
-		database.DB.Model(&models.Block{}).Where("user_id = ? AND unblocked_at IS NULL", userID).Pluck("blocked_id", &blockedIDs)
+		database.DB.Model(&models.Block{}).Where("user_id = ? AND unblocked_at IS NULL AND deleted_at IS NULL", userID).Pluck("blocked_id", &blockedIDs)
 		if len(blockedIDs) > 0 {
 			query = query.Where("user_id NOT IN ?", blockedIDs)
 		}
@@ -319,7 +338,7 @@ func (s *PostService) SearchPosts(userID int64, keyword string, page, pageSize i
 		return nil, 0, err
 	}
 
-	if err := query.Preload("User").
+	if err := query.
 		Order("created_at DESC").
 		Offset(offset).
 		Limit(pageSize).
@@ -724,6 +743,7 @@ func (s *PostService) BlockUser(userID, blockedID int64) error {
 
 func (s *PostService) UnblockUser(userID, blockedID int64) error {
 	var block models.Block
+	// 查询未取消拉黑的记录
 	if err := database.DB.Where("user_id = ? AND blocked_id = ? AND unblocked_at IS NULL", userID, blockedID).First(&block).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return ErrNotBlocked
@@ -774,7 +794,7 @@ func (s *PostService) GetBlockedUsers(userID int64, page, pageSize int) ([]Block
 			blocks.unblocked_at
 		`).
 		Joins("JOIN users ON users.id = blocks.blocked_id").
-		Where("blocks.user_id = ?", userID)
+		Where("blocks.user_id = ? AND blocks.unblocked_at IS NULL", userID)
 
 	if err := query.Count(&total).Error; err != nil {
 		return nil, 0, err
@@ -1050,7 +1070,10 @@ func (s *PostService) GetMyPosts(userID int64, page, pageSize int) ([]models.Pos
 		return nil, 0, err
 	}
 
-	if err := query.Preload("User").
+	// 重新构建查询以包含 Preload
+	findQuery := database.DB.Model(&models.Post{}).Preload("User").Where("user_id = ?", userID)
+
+	if err := findQuery.
 		Order("created_at DESC").
 		Offset(offset).
 		Limit(pageSize).

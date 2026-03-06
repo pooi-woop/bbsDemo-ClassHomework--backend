@@ -53,11 +53,10 @@ type Like struct {
 }
 
 type Block struct {
-	ID          uint           `gorm:"primarykey" json:"id"`
-	CreatedAt   time.Time      `json:"created_at"`
-	UpdatedAt   time.Time      `json:"updated_at"`
-	DeletedAt   gorm.DeletedAt `gorm:"index" json:"-"`
-	UnblockedAt *time.Time     `gorm:"index" json:"unblocked_at,omitempty"`
+	ID          uint       `gorm:"primarykey" json:"id"`
+	CreatedAt   time.Time  `json:"created_at"`
+	UpdatedAt   time.Time  `json:"updated_at"`
+	UnblockedAt *time.Time `gorm:"index" json:"unblocked_at,omitempty"`
 
 	UserID    int64 `gorm:"index;not null" json:"user_id"`
 	BlockedID int64 `gorm:"index;not null" json:"blocked_id"`
@@ -80,10 +79,9 @@ type FavoriteFolder struct {
 }
 
 type Favorite struct {
-	ID        uint           `gorm:"primarykey" json:"id"`
-	CreatedAt time.Time      `json:"created_at"`
-	UpdatedAt time.Time      `json:"updated_at"`
-	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"`
+	ID        uint      `gorm:"primarykey" json:"id"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 
 	UserID   int64 `gorm:"index;not null" json:"user_id"`
 	PostID   int64 `gorm:"index;not null" json:"post_id"`

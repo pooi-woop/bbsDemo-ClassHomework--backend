@@ -1170,8 +1170,8 @@ Content-Type: application/json
 Authorization: Bearer <access_token>
 
 {
-  "post_id": 1234567890123456789,
-  "folder_id": 1
+  "post_id": "1234567890123456789",
+  "folder_id": "1"
 }
 ```
 
@@ -1195,9 +1195,9 @@ Authorization: Bearer <access_token>
 | 500 | `{"error": "Failed to favorite post"}` | 收藏失败 |
 
 **测试用例：**
-1. 正常收藏：`{"post_id": 1, "folder_id": 1}`
-2. 重复收藏：`{"post_id": 1, "folder_id": 1}`（已收藏后再收藏）
-3. 不存在的帖子：`{"post_id": 999, "folder_id": 1}`
+1. 正常收藏：`{"post_id": "1", "folder_id": "1"}`
+2. 重复收藏：`{"post_id": "1", "folder_id": "1"}`（已收藏后再收藏）
+3. 不存在的帖子：`{"post_id": "999", "folder_id": "1"}`
 
 ### 6.6 取消收藏
 
@@ -1396,7 +1396,8 @@ Authorization: Bearer <access_token>
 
 **说明：**
 - 取消拉黑后不会删除记录，而是保留记录并更新 `unblocked_at` 字段
-- 可以通过 `unblocked_at` 字段判断用户是否已取消拉黑
+- `unblocked_at` 为 null 表示当前处于拉黑状态
+- `unblocked_at` 不为 null 表示已取消拉黑
 - 取消拉黑后可以重新拉黑该用户
 
 **错误返回：**
@@ -1456,8 +1457,8 @@ Authorization: Bearer <access_token>
 
 **字段说明：**
 - `blocked_at`: 拉黑时间
-- `unblocked_at`: 取消拉黑时间（null 表示未取消拉黑）
-- 可以通过 `unblocked_at` 字段判断用户是否已取消拉黑
+- `unblocked_at`: 取消拉黑时间（null 表示当前处于拉黑状态，不为 null 表示已取消拉黑）
+- 黑名单列表只返回 `unblocked_at` 为 null 的用户（当前处于拉黑状态）
 
 **错误返回：**
 | 状态码 | 错误信息 | 说明 |
