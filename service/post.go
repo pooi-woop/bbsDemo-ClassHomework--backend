@@ -39,7 +39,7 @@ type FavoriteWithFolder struct {
 }
 
 type BlockedUserWithStatus struct {
-	ID          int64      `json:"id"`
+	ID          int64      `json:"id,string"`
 	Email       string     `json:"email"`
 	Nickname    string     `json:"nickname"`
 	Bio         string     `json:"bio"`
@@ -748,13 +748,25 @@ func (s *PostService) BlockUser(userID, blockedID int64) error {
 }
 
 func (s *PostService) UnblockUser(userID, blockedID int64) error {
+	logger.Info("Unblock user request",
+		zap.Int64("user_id", userID),
+		zap.Int64("blocked_id", blockedID))
+
 	var block models.Block
 	// 查询未取消拉黑的记录
 	if err := database.DB.Where("user_id = ? AND blocked_id = ? AND unblocked_at IS NULL", userID, blockedID).First(&block).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
+			logger.Info("Block record not found", zap.Int64("user_id", userID), zap.Int64("blocked_id", blockedID))
 			return ErrNotBlocked
 		}
+		logger.Error("Failed to find block record", zap.Error(err))
 		return err
+	}
+
+	if block.UnblockedAt != nil {
+		logger.Info("Found block record", zap.Uint("block_id", block.ID), zap.Time("unblocked_at", *block.UnblockedAt))
+	} else {
+		logger.Info("Found block record", zap.Uint("block_id", block.ID), zap.String("unblocked_at", "NULL"))
 	}
 
 	now := time.Now()
@@ -800,7 +812,7 @@ func (s *PostService) GetBlockedUsers(userID int64, page, pageSize int) ([]Block
 			blocks.unblocked_at
 		`).
 		Joins("JOIN users ON users.id = blocks.blocked_id").
-		Where("blocks.user_id = ? AND blocks.unblocked_at IS NULL", userID)
+		Where("blocks.user_id = ?", userID)
 
 	if err := query.Count(&total).Error; err != nil {
 		return nil, 0, err
