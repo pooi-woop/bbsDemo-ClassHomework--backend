@@ -92,6 +92,18 @@ type FavoritePostRequest struct {
 }
 
 func (s *PostService) CreatePost(userID int64, req CreatePostRequest) (*models.Post, error) {
+	// 检查用户是否被禁言
+	var user models.User
+	if err := database.DB.First(&user, userID).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errors.New("user not found")
+		}
+		return nil, err
+	}
+	if user.Status == 0 {
+		return nil, errors.New("user is banned")
+	}
+
 	post := models.Post{
 		ID:      utils.GenerateID(),
 		UserID:  userID,
@@ -527,6 +539,18 @@ func (s *PostService) Search(userID int64, keyword string, page, pageSize int) (
 }
 
 func (s *PostService) CreateComment(userID int64, req CreateCommentRequest) (*models.Comment, error) {
+	// 检查用户是否被禁言
+	var user models.User
+	if err := database.DB.First(&user, userID).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errors.New("user not found")
+		}
+		return nil, err
+	}
+	if user.Status == 0 {
+		return nil, errors.New("user is banned")
+	}
+
 	logger.Info("Create comment request",
 		zap.Int64("user_id", userID),
 		zap.Any("post_id", req.PostID),
