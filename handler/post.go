@@ -430,10 +430,6 @@ func (h *PostHandler) GetComments(c *gin.Context) {
 // SearchComments 根据关键词搜索评论
 func (h *PostHandler) SearchComments(c *gin.Context) {
 	keyword := c.Query("keyword")
-	if keyword == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "keyword is required"})
-		return
-	}
 
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "10"))
