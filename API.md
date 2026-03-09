@@ -944,7 +944,52 @@ Authorization: Bearer <access_token>
 2. 无权删除：使用其他用户的 token 删除评论
 3. 不存在的评论：`DELETE /api/comments/999`
 
-### 4.4 获取回复（楼中楼）
+### 4.4 获取评论详情
+
+**请求：**
+```http
+GET /api/comments/1
+```
+
+**响应：**
+```json
+{
+  "comment": {
+    "id": "1",
+    "post_id": "1234567890123456789",
+    "user_id": "1234567890123456789",
+    "content": "Great post!",
+    "is_deleted": false,
+    "created_at": "2023-01-01T00:00:00Z",
+    "updated_at": "2023-01-01T00:00:00Z",
+    "user": {
+      "id": "1234567890123456789",
+      "email": "user@example.com",
+      "nickname": "User",
+      "avatar": ""
+    },
+    "post": {
+      "id": "1234567890123456789",
+      "title": "Hello World",
+      "content": "This is a test post"
+    }
+  }
+}
+```
+
+**错误返回：**
+| 状态码 | 错误信息 | 说明 |
+|--------|---------|------|
+| 400 | `{"error": "Invalid comment ID"}` | 无效的评论ID |
+| 404 | `{"error": "Comment not found"}` | 评论不存在 |
+| 500 | `{"error": "Failed to get comment"}` | 获取失败 |
+
+**测试用例：**
+1. 正常获取：`GET /api/comments/1`
+2. 不存在的评论：`GET /api/comments/999`
+3. 无效ID：`GET /api/comments/invalid`
+
+### 4.5 获取回复（楼中楼）
 
 **请求：**
 ```http
@@ -1043,7 +1088,35 @@ Authorization: Bearer <access_token>
 1. 正常取消：`DELETE /api/posts/1/like`
 2. 未点赞取消：`DELETE /api/posts/1/like`（未点赞时取消）
 
-### 5.3 点赞评论
+### 5.3 查询帖子点赞状态
+
+**请求：**
+```http
+GET /api/posts/1234567890123456789/like
+Authorization: Bearer <access_token>
+```
+
+**响应：**
+```json
+{
+  "post_id": "1234567890123456789",
+  "is_liked": true
+}
+```
+
+**错误返回：**
+| 状态码 | 错误信息 | 说明 |
+|--------|---------|------|
+| 401 | `{"error": "Authorization header required"}` | 缺少认证头 |
+| 400 | `{"error": "Invalid post ID"}` | 无效的帖子ID |
+| 500 | `{"error": "Failed to get like status"}` | 查询失败 |
+
+**测试用例：**
+1. 已点赞查询：`GET /api/posts/1/like`（已点赞的帖子）
+2. 未点赞查询：`GET /api/posts/1/like`（未点赞的帖子）
+3. 不存在的帖子：`GET /api/posts/999/like`
+
+### 5.4 点赞评论
 
 **请求：**
 ```http
@@ -1301,7 +1374,35 @@ Authorization: Bearer <access_token>
 1. 正常取消：`DELETE /api/posts/1/favorite`
 2. 未收藏取消：`DELETE /api/posts/1/favorite`（未收藏时取消）
 
-### 6.7 移动收藏
+### 6.7 查询帖子收藏状态
+
+**请求：**
+```http
+GET /api/posts/1234567890123456789/favorite
+Authorization: Bearer <access_token>
+```
+
+**响应：**
+```json
+{
+  "post_id": "1234567890123456789",
+  "is_favorited": true
+}
+```
+
+**错误返回：**
+| 状态码 | 错误信息 | 说明 |
+|--------|---------|------|
+| 401 | `{"error": "Authorization header required"}` | 缺少认证头 |
+| 400 | `{"error": "Invalid post ID"}` | 无效的帖子ID |
+| 500 | `{"error": "Failed to get favorite status"}` | 查询失败 |
+
+**测试用例：**
+1. 已收藏查询：`GET /api/posts/1/favorite`（已收藏的帖子）
+2. 未收藏查询：`GET /api/posts/1/favorite`（未收藏的帖子）
+3. 不存在的帖子：`GET /api/posts/999/favorite`
+
+### 6.8 移动收藏
 
 **请求：**
 ```http

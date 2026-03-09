@@ -427,6 +427,31 @@ func (h *PostHandler) GetComments(c *gin.Context) {
 	})
 }
 
+// GetComment 获取单个评论详情
+func (h *PostHandler) GetComment(c *gin.Context) {
+	commentID, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid comment ID"})
+		return
+	}
+
+	comment, err := h.postService.GetCommentByID(uint(commentID))
+	if err != nil {
+		switch err {
+		case service.ErrCommentNotFound:
+			c.JSON(http.StatusNotFound, gin.H{"error": "Comment not found"})
+		default:
+			logger.Error("Failed to get comment", zap.Error(err))
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get comment"})
+		}
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"comment": comment,
+	})
+}
+
 func (h *PostHandler) GetReplies(c *gin.Context) {
 	commentID, err := strconv.ParseUint(c.Param("id"), 10, 32)
 	if err != nil {
@@ -503,6 +528,52 @@ func (h *PostHandler) UnlikePost(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Post unliked"})
+}
+
+// GetPostLikeStatus 获取当前用户对帖子的点赞状态
+func (h *PostHandler) GetPostLikeStatus(c *gin.Context) {
+	userID, _ := c.Get("userID")
+
+	postID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid post ID"})
+		return
+	}
+
+	isLiked, err := h.postService.IsPostLiked(userID.(int64), postID)
+	if err != nil {
+		logger.Error("Failed to get like status", zap.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get like status"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"post_id":  postID,
+		"is_liked": isLiked,
+	})
+}
+
+// GetPostFavoriteStatus 获取当前用户对帖子的收藏状态
+func (h *PostHandler) GetPostFavoriteStatus(c *gin.Context) {
+	userID, _ := c.Get("userID")
+
+	postID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid post ID"})
+		return
+	}
+
+	isFavorited, err := h.postService.IsPostFavorited(userID.(int64), postID)
+	if err != nil {
+		logger.Error("Failed to get favorite status", zap.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get favorite status"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"post_id":      postID,
+		"is_favorited": isFavorited,
+	})
 }
 
 func (h *PostHandler) LikeComment(c *gin.Context) {

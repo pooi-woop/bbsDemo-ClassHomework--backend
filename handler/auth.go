@@ -207,9 +207,10 @@ func (h *AuthHandler) GetUserInfo(c *gin.Context) {
 }
 
 func (h *AuthHandler) GetAllUsers(c *gin.Context) {
-	// 从查询参数中获取分页信息
+	// 从查询参数中获取分页信息和关键词
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "10"))
+	keyword := c.DefaultQuery("keyword", "")
 
 	// 验证分页参数
 	if page < 1 {
@@ -219,9 +220,9 @@ func (h *AuthHandler) GetAllUsers(c *gin.Context) {
 		pageSize = 10
 	}
 
-	logger.Info("Get all users request", zap.Int("page", page), zap.Int("page_size", pageSize))
+	logger.Info("Get all users request", zap.Int("page", page), zap.Int("page_size", pageSize), zap.String("keyword", keyword))
 
-	users, total, err := h.userService.GetAllUsers(page, pageSize)
+	users, total, err := h.userService.GetAllUsers(page, pageSize, keyword)
 	if err != nil {
 		logger.Error("Failed to get all users", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get users"})
@@ -233,6 +234,7 @@ func (h *AuthHandler) GetAllUsers(c *gin.Context) {
 		"total":     total,
 		"page":      page,
 		"page_size": pageSize,
+		"keyword":   keyword,
 	})
 }
 

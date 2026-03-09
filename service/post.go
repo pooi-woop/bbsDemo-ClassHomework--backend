@@ -350,6 +350,11 @@ func (s *PostService) SearchPosts(userID int64, keyword string, page, pageSize i
 		zap.Int("page", page),
 		zap.Int("page_size", pageSize))
 
+	// 如果关键词为空，返回空结果
+	if keyword == "" {
+		return []PostWithStatus{}, 0, nil
+	}
+
 	query := database.DB.Model(&models.Post{}).Preload("User").
 		Where("title LIKE ? OR content LIKE ?", "%"+keyword+"%", "%"+keyword+"%")
 
@@ -423,6 +428,11 @@ func (s *PostService) Search(userID int64, keyword string, page, pageSize int) (
 	result := &SearchResult{
 		Posts: []PostWithStatus{},
 		Users: []models.User{},
+	}
+
+	// 如果关键词为空，返回空结果
+	if keyword == "" {
+		return result, nil
 	}
 
 	offset := (page - 1) * pageSize
@@ -731,6 +741,19 @@ func (s *PostService) GetComments(postID uint, page, pageSize int) ([]models.Com
 	return comments, total, nil
 }
 
+// GetCommentByID 根据ID查询单个评论
+func (s *PostService) GetCommentByID(commentID uint) (*models.Comment, error) {
+	var comment models.Comment
+	if err := database.DB.Preload("User").Preload("Post").First(&comment, commentID).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrCommentNotFound
+		}
+		logger.Error("Failed to get comment", zap.Error(err))
+		return nil, err
+	}
+	return &comment, nil
+}
+
 func (s *PostService) GetAllComments(page, pageSize int) ([]models.Comment, int64, error) {
 	var comments []models.Comment
 	var total int64
@@ -820,6 +843,34 @@ func (s *PostService) UnlikePost(userID int64, postID int64) error {
 
 	logger.Info("Post unliked", zap.Int64("post_id", postID), zap.Int64("user_id", userID))
 	return nil
+}
+
+// IsPostLiked 检查用户是否点赞了帖子
+func (s *PostService) IsPostLiked(userID int64, postID int64) (bool, error) {
+	var like models.Like
+	err := database.DB.Where("user_id = ? AND post_id = ?", userID, postID).First(&like).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return false, nil
+		}
+		logger.Error("Failed to check like status", zap.Error(err))
+		return false, err
+	}
+	return true, nil
+}
+
+// IsPostFavorited 检查用户是否收藏了帖子
+func (s *PostService) IsPostFavorited(userID int64, postID int64) (bool, error) {
+	var favorite models.Favorite
+	err := database.DB.Where("user_id = ? AND post_id = ?", userID, postID).First(&favorite).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return false, nil
+		}
+		logger.Error("Failed to check favorite status", zap.Error(err))
+		return false, err
+	}
+	return true, nil
 }
 
 func (s *PostService) LikeComment(userID int64, commentID uint) error {

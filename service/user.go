@@ -337,18 +337,25 @@ func (s *UserService) GetUserByID(userID int64) (*models.User, error) {
 	return &user, nil
 }
 
-func (s *UserService) GetAllUsers(page, pageSize int) ([]models.User, int64, error) {
+func (s *UserService) GetAllUsers(page, pageSize int, keyword string) ([]models.User, int64, error) {
 	var users []models.User
 	var total int64
 
 	offset := (page - 1) * pageSize
 
-	if err := database.DB.Model(&models.User{}).Count(&total).Error; err != nil {
+	query := database.DB.Model(&models.User{})
+
+	// 如果有关键词，添加搜索条件
+	if keyword != "" {
+		query = query.Where("nickname LIKE ? OR email LIKE ?", "%"+keyword+"%", "%"+keyword+"%")
+	}
+
+	if err := query.Count(&total).Error; err != nil {
 		logger.Error("Failed to count users", zap.Error(err))
 		return nil, 0, err
 	}
 
-	if err := database.DB.Offset(offset).Limit(pageSize).Find(&users).Error; err != nil {
+	if err := query.Offset(offset).Limit(pageSize).Find(&users).Error; err != nil {
 		logger.Error("Failed to get users", zap.Error(err))
 		return nil, 0, err
 	}

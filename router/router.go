@@ -54,6 +54,7 @@ func InitRouter(userService *service.UserService, postService *service.PostServi
 	comments := r.Group("/api/comments")
 	comments.Use(middleware.OptionalAuth())
 	{
+		comments.GET("/:id", postHandler.GetComment)
 		comments.GET("/:id/replies", postHandler.GetReplies)
 	}
 
@@ -82,9 +83,12 @@ func InitRouter(userService *service.UserService, postService *service.PostServi
 
 		authorized.POST("/posts/:id/like", postHandler.LikePost)
 		authorized.DELETE("/posts/:id/like", postHandler.UnlikePost)
+		authorized.GET("/posts/:id/like", postHandler.GetPostLikeStatus)
 
 		authorized.POST("/comments/:id/like", postHandler.LikeComment)
 		authorized.DELETE("/comments/:id/like", postHandler.UnlikeComment)
+
+		authorized.GET("/posts/:id/favorite", postHandler.GetPostFavoriteStatus)
 
 		authorized.POST("/users/:id/block", postHandler.BlockUser)
 		authorized.DELETE("/users/:id/block", postHandler.UnblockUser)
