@@ -44,6 +44,13 @@ func InitRouter(userService *service.UserService, postService *service.PostServi
 		posts.GET("/:id/comments", postHandler.GetComments)
 	}
 
+	// 综合搜索接口
+	search := r.Group("/api/search")
+	search.Use(middleware.OptionalAuth())
+	{
+		search.GET("", postHandler.Search)
+	}
+
 	comments := r.Group("/api/comments")
 	comments.Use(middleware.OptionalAuth())
 	{

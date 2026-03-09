@@ -578,7 +578,83 @@ GET /api/posts/search?keyword=Hello&page=1&page_size=10
 2. 空关键词：`GET /api/posts/search?keyword=`
 3. 无结果搜索：`GET /api/posts/search?keyword=不存在的关键词`
 
-### 3.3 获取帖子详情
+### 3.3 综合搜索（用户和帖子）
+
+**请求：**
+```http
+GET /api/search?keyword=Hello&page=1&page_size=10
+```
+
+**响应：**
+```json
+{
+  "posts": [
+    {
+      "id": "1234567890123456789",
+      "user_id": "1234567890123456789",
+      "title": "Hello World",
+      "content": "This is a test post",
+      "views": 10,
+      "like_count": 5,
+      "comment_count": 3,
+      "created_at": "2023-01-01T00:00:00Z",
+      "updated_at": "2023-01-01T00:00:00Z",
+      "is_liked": false,
+      "is_favorited": false,
+      "user": {
+        "id": "1234567890123456789",
+        "email": "user@example.com",
+        "nickname": "User",
+        "avatar": ""
+      }
+    }
+  ],
+  "users": [
+    {
+      "id": "1234567890123456789",
+      "email": "user@example.com",
+      "nickname": "HelloUser",
+      "bio": "Hello everyone!",
+      "avatar": "",
+      "status": 1,
+      "is_admin": false,
+      "is_verified": true,
+      "created_at": "2023-01-01T00:00:00Z",
+      "last_login_at": "2023-01-01T00:00:00Z"
+    }
+  ],
+  "total": {
+    "posts": 1,
+    "users": 1
+  },
+  "page": 1,
+  "page_size": 10,
+  "keyword": "Hello"
+}
+```
+
+**参数说明：**
+- `keyword`：搜索关键词（必填）
+- `page`：页码，默认 1
+- `page_size`：每页数量，默认 10
+
+**搜索范围：**
+- **帖子**：标题或内容包含关键词
+- **用户**：昵称或邮箱包含关键词
+
+**错误返回：**
+| 状态码 | 错误信息 | 说明 |
+|--------|---------|------|
+| 400 | `{"error": "keyword is required"}` | 关键词不能为空 |
+| 500 | `{"error": "Failed to search"}` | 搜索失败 |
+
+**测试用例：**
+1. 正常搜索：`GET /api/search?keyword=Hello&page=1&page_size=10`
+2. 空关键词：`GET /api/search?keyword=`
+3. 只搜索用户：`GET /api/search?keyword=user@example.com`
+4. 分页查询：`GET /api/search?keyword=Hello&page=2&page_size=5`
+
+### 3.4 获取帖子详情
 
 **请求：**
 ```http

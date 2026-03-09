@@ -151,12 +151,34 @@ func (s *PostService) DeletePost(userID int64, postID int64) error {
 		return errors.New("unauthorized")
 	}
 
-	if err := database.DB.Delete(&post).Error; err != nil {
+	if err := database.DB.Delete(&models.Post{}, postID).Error; err != nil {
 		logger.Error("Failed to delete post", zap.Error(err))
 		return err
 	}
 
 	logger.Info("Post deleted", zap.Int64("post_id", post.ID))
+	return nil
+}
+
+func (s *PostService) DeletePostWithAdminCheck(userID int64, postID int64, isAdmin bool) error {
+	var post models.Post
+	if err := database.DB.First(&post, postID).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return ErrPostNotFound
+		}
+		return err
+	}
+
+	if post.UserID != userID && !isAdmin {
+		return errors.New("unauthorized")
+	}
+
+	if err := database.DB.Delete(&models.Post{}, postID).Error; err != nil {
+		logger.Error("Failed to delete post", zap.Error(err))
+		return err
+	}
+
+	logger.Info("Post deleted", zap.Int64("post_id", post.ID), zap.Bool("is_admin", isAdmin))
 	return nil
 }
 
@@ -378,6 +400,120 @@ func (s *PostService) SearchPosts(userID int64, keyword string, page, pageSize i
 	}
 
 	return postsWithStatus, total, nil
+}
+
+// SearchResult 综合搜索结果
+type SearchResult struct {
+	Posts []PostWithStatus `json:"posts"`
+	Users []models.User    `json:"users"`
+	Total struct {
+		Posts int64 `json:"posts"`
+		Users int64 `json:"users"`
+	} `json:"total"`
+}
+
+// Search 综合搜索，同时搜索用户和帖子
+func (s *PostService) Search(userID int64, keyword string, page, pageSize int) (*SearchResult, error) {
+	logger.Info("Search request",
+		zap.Int64("user_id", userID),
+		zap.String("keyword", keyword),
+		zap.Int("page", page),
+		zap.Int("page_size", pageSize))
+
+	result := &SearchResult{
+		Posts: []PostWithStatus{},
+		Users: []models.User{},
+	}
+
+	offset := (page - 1) * pageSize
+
+	// 搜索帖子
+	var posts []models.Post
+	var postTotal int64
+
+	postQuery := database.DB.Model(&models.Post{}).Preload("User").
+		Where("title LIKE ? OR content LIKE ?", "%"+keyword+"%", "%"+keyword+"%")
+
+	// 如果用户已登录，过滤被拉黑用户的内容
+	if userID > 0 {
+		var blockedIDs []int64
+		database.DB.Model(&models.Block{}).Where("user_id = ? AND unblocked_at IS NULL AND deleted_at IS NULL", userID).Pluck("blocked_id", &blockedIDs)
+		if len(blockedIDs) > 0 {
+			postQuery = postQuery.Where("user_id NOT IN ?", blockedIDs)
+		}
+	}
+
+	if err := postQuery.Count(&postTotal).Error; err != nil {
+		logger.Error("Failed to count posts", zap.Error(err))
+		return nil, err
+	}
+
+	if err := postQuery.
+		Order("created_at DESC").
+		Offset(offset).
+		Limit(pageSize).
+		Find(&posts).Error; err != nil {
+		logger.Error("Failed to search posts", zap.Error(err))
+		return nil, err
+	}
+
+	// 转换为带状态的帖子
+	postsWithStatus := make([]PostWithStatus, len(posts))
+	for i, post := range posts {
+		postsWithStatus[i] = PostWithStatus{
+			Post:        post,
+			IsLiked:     false,
+			IsFavorited: false,
+		}
+
+		// 如果用户已登录，检查点赞和收藏状态
+		if userID > 0 {
+			// 检查是否点赞
+			var like models.Like
+			if err := database.DB.Where("user_id = ? AND post_id = ?", userID, post.ID).First(&like).Error; err == nil {
+				postsWithStatus[i].IsLiked = true
+			}
+
+			// 检查是否收藏
+			var favorite models.Favorite
+			if err := database.DB.Where("user_id = ? AND post_id = ?", userID, post.ID).First(&favorite).Error; err == nil {
+				postsWithStatus[i].IsFavorited = true
+			}
+		}
+	}
+	result.Posts = postsWithStatus
+	result.Total.Posts = postTotal
+
+	// 搜索用户
+	var users []models.User
+	var userTotal int64
+
+	userQuery := database.DB.Model(&models.User{}).
+		Where("nickname LIKE ? OR email LIKE ?", "%"+keyword+"%", "%"+keyword+"%")
+
+	if err := userQuery.Count(&userTotal).Error; err != nil {
+		logger.Error("Failed to count users", zap.Error(err))
+		return nil, err
+	}
+
+	if err := userQuery.
+		Select("id, email, nickname, bio, avatar, status, is_admin, is_verified, created_at, last_login_at").
+		Order("created_at DESC").
+		Offset(offset).
+		Limit(pageSize).
+		Find(&users).Error; err != nil {
+		logger.Error("Failed to search users", zap.Error(err))
+		return nil, err
+	}
+
+	result.Users = users
+	result.Total.Users = userTotal
+
+	logger.Info("Search completed",
+		zap.Int64("post_total", postTotal),
+		zap.Int64("user_total", userTotal))
+
+	return result, nil
 }
 
 func (s *PostService) CreateComment(userID int64, req CreateCommentRequest) (*models.Comment, error) {

@@ -69,6 +69,7 @@ func (h *PostHandler) UpdatePost(c *gin.Context) {
 
 func (h *PostHandler) DeletePost(c *gin.Context) {
 	userID, _ := c.Get("userID")
+	isAdmin, _ := c.Get("isAdmin")
 
 	postID, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
@@ -76,7 +77,7 @@ func (h *PostHandler) DeletePost(c *gin.Context) {
 		return
 	}
 
-	if err := h.postService.DeletePost(userID.(int64), postID); err != nil {
+	if err := h.postService.DeletePostWithAdminCheck(userID.(int64), postID, isAdmin.(bool)); err != nil {
 		switch err {
 		case service.ErrPostNotFound:
 			c.JSON(http.StatusNotFound, gin.H{"error": "Post not found"})
@@ -196,6 +197,47 @@ func (h *PostHandler) SearchPosts(c *gin.Context) {
 	})
 }
 
+// Search 综合搜索，同时搜索用户和帖子
+func (h *PostHandler) Search(c *gin.Context) {
+	keyword := c.Query("keyword")
+	if keyword == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "keyword is required"})
+		return
+	}
+
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "10"))
+
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 || pageSize > 100 {
+		pageSize = 10
+	}
+
+	// 获取当前用户ID（如果已登录）
+	var userID int64
+	if id, exists := c.Get("userID"); exists {
+		userID = id.(int64)
+	}
+
+	result, err := h.postService.Search(userID, keyword, page, pageSize)
+	if err != nil {
+		logger.Error("Failed to search", zap.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to search"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"posts":     result.Posts,
+		"users":     result.Users,
+		"total":     result.Total,
+		"page":      page,
+		"page_size": pageSize,
+		"keyword":   keyword,
+	})
+}
+
 func (h *PostHandler) CreateComment(c *gin.Context) {
 	userID, _ := c.Get("userID")
 
@@ -304,10 +346,10 @@ func (h *PostHandler) GetAllComments(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"comments":   comments,
-		"total":      total,
-		"page":       page,
-		"page_size":  pageSize,
+		"comments":  comments,
+		"total":     total,
+		"page":      page,
+		"page_size": pageSize,
 	})
 }
 
