@@ -105,6 +105,8 @@ func InitRouter(userService *service.UserService, postService *service.PostServi
 		// 用户管理
 		admin.PUT("/users/:id/ban", postHandler.BanUser)
 		admin.PUT("/users/:id/unban", postHandler.UnbanUser)
+		// 查看所有用户
+		admin.GET("/users", authHandler.GetAllUsers)
 	}
 
 	return r

@@ -206,6 +206,36 @@ func (h *AuthHandler) GetUserInfo(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"user": user})
 }
 
+func (h *AuthHandler) GetAllUsers(c *gin.Context) {
+	// 从查询参数中获取分页信息
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "10"))
+
+	// 验证分页参数
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 || pageSize > 100 {
+		pageSize = 10
+	}
+
+	logger.Info("Get all users request", zap.Int("page", page), zap.Int("page_size", pageSize))
+
+	users, total, err := h.userService.GetAllUsers(page, pageSize)
+	if err != nil {
+		logger.Error("Failed to get all users", zap.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get users"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"users":     users,
+		"total":     total,
+		"page":      page,
+		"page_size": pageSize,
+	})
+}
+
 func (h *AuthHandler) UpdateNickname(c *gin.Context) {
 	userID, _ := c.Get("userID")
 

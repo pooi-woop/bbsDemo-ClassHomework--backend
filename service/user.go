@@ -337,6 +337,32 @@ func (s *UserService) GetUserByID(userID int64) (*models.User, error) {
 	return &user, nil
 }
 
+func (s *UserService) GetAllUsers(page, pageSize int) ([]models.User, int64, error) {
+	var users []models.User
+	var total int64
+
+	offset := (page - 1) * pageSize
+
+	if err := database.DB.Model(&models.User{}).Count(&total).Error; err != nil {
+		logger.Error("Failed to count users", zap.Error(err))
+		return nil, 0, err
+	}
+
+	if err := database.DB.Offset(offset).Limit(pageSize).Find(&users).Error; err != nil {
+		logger.Error("Failed to get users", zap.Error(err))
+		return nil, 0, err
+	}
+
+	// 处理 deleted_at 字段
+	for i := range users {
+		if users[i].DeletedAt.Valid {
+			users[i].DeletedAtStr = users[i].DeletedAt.Time.Format("2006-01-02 15:04:05")
+		}
+	}
+
+	return users, total, nil
+}
+
 func (s *UserService) UpdateNickname(userID int64, nickname string) (*models.User, error) {
 	var user models.User
 	if err := database.DB.First(&user, userID).Error; err != nil {

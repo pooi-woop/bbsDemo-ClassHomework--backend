@@ -1623,6 +1623,53 @@ Authorization: Bearer <admin_access_token>
 2. 普通用户尝试：使用普通用户 token 访问
 3. 不存在的用户：`PUT /api/admin/users/999/unban`
 
+### 9.5 查看所有用户
+
+**请求：**
+```http
+GET /api/admin/users?page=1&page_size=10
+Authorization: Bearer <admin_access_token>
+```
+
+**响应：**
+```json
+{
+  "users": [
+    {
+      "id": "1234567890123456789",
+      "email": "user@example.com",
+      "nickname": "User",
+      "bio": "This is my bio",
+      "avatar": "/uploads/avatar_1234567890123456789_1234567890.jpg",
+      "status": 1,
+      "is_admin": false,
+      "is_verified": true,
+      "created_at": "2023-01-01T00:00:00Z",
+      "last_login_at": "2023-01-01T00:00:00Z"
+    }
+  ],
+  "total": 1,
+  "page": 1,
+  "page_size": 10
+}
+```
+
+**参数说明：**
+- `page`：页码，默认 1
+- `page_size`：每页数量，默认 10
+
+**错误返回：**
+| 状态码 | 错误信息 | 说明 |
+|--------|---------|------|
+| 401 | `{"error": "Authorization header required"}` | 缺少认证头 |
+| 403 | `{"error": "Admin access required"}` | 需要管理员权限 |
+| 500 | `{"error": "Failed to get users"}` | 获取失败 |
+
+**测试用例：**
+1. 管理员查看：`GET /api/admin/users?page=1&page_size=10`（使用管理员 token）
+2. 普通用户尝试：使用普通用户 token 访问
+3. 分页查询：`GET /api/admin/users?page=2&page_size=5`
+
 ## 10. 中间件说明
 
 ### 10.1 AuthRequired 中间件
