@@ -101,6 +101,7 @@ func InitRouter(userService *service.UserService, postService *service.PostServi
 		// 帖子管理
 		admin.DELETE("/posts/:id", postHandler.AdminDeletePost)
 		// 评论管理
+		admin.GET("/comments", postHandler.GetAllComments)
 		admin.DELETE("/comments/:id", postHandler.AdminDeleteComment)
 		// 用户管理
 		admin.PUT("/users/:id/ban", postHandler.BanUser)

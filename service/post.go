@@ -595,6 +595,29 @@ func (s *PostService) GetComments(postID uint, page, pageSize int) ([]models.Com
 	return comments, total, nil
 }
 
+func (s *PostService) GetAllComments(page, pageSize int) ([]models.Comment, int64, error) {
+	var comments []models.Comment
+	var total int64
+
+	offset := (page - 1) * pageSize
+
+	if err := database.DB.Model(&models.Comment{}).Count(&total).Error; err != nil {
+		logger.Error("Failed to count comments", zap.Error(err))
+		return nil, 0, err
+	}
+
+	if err := database.DB.Preload("User").Preload("Post").
+		Order("created_at DESC").
+		Offset(offset).
+		Limit(pageSize).
+		Find(&comments).Error; err != nil {
+		logger.Error("Failed to get comments", zap.Error(err))
+		return nil, 0, err
+	}
+
+	return comments, total, nil
+}
+
 func (s *PostService) GetReplies(commentID uint, page, pageSize int) ([]models.Comment, int64, error) {
 	var comments []models.Comment
 	var total int64

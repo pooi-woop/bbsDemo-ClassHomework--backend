@@ -282,6 +282,35 @@ func (h *PostHandler) AdminDeleteComment(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Comment deleted"})
 }
 
+// GetAllComments 管理员获取所有评论
+func (h *PostHandler) GetAllComments(c *gin.Context) {
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "10"))
+
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 || pageSize > 100 {
+		pageSize = 10
+	}
+
+	logger.Info("Get all comments request", zap.Int("page", page), zap.Int("page_size", pageSize))
+
+	comments, total, err := h.postService.GetAllComments(page, pageSize)
+	if err != nil {
+		logger.Error("Failed to get all comments", zap.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get comments"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"comments":   comments,
+		"total":      total,
+		"page":       page,
+		"page_size":  pageSize,
+	})
+}
+
 // BanUser 禁言用户
 func (h *PostHandler) BanUser(c *gin.Context) {
 	userID, err := strconv.ParseInt(c.Param("id"), 10, 64)
