@@ -742,7 +742,7 @@ func (s *PostService) UnbanUser(userID int64) error {
 	return nil
 }
 
-func (s *PostService) GetComments(postID uint, page, pageSize int) ([]models.Comment, int64, error) {
+func (s *PostService) GetComments(postID int64, page, pageSize int) ([]models.Comment, int64, error) {
 	var comments []models.Comment
 	var total int64
 

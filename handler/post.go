@@ -396,8 +396,9 @@ func (h *PostHandler) UnbanUser(c *gin.Context) {
 }
 
 func (h *PostHandler) GetComments(c *gin.Context) {
-	postID, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	postID, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
+		logger.Error("Invalid post ID", zap.String("post_id", c.Param("id")), zap.Error(err))
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid post ID"})
 		return
 	}
@@ -412,7 +413,7 @@ func (h *PostHandler) GetComments(c *gin.Context) {
 		pageSize = 10
 	}
 
-	comments, total, err := h.postService.GetComments(uint(postID), page, pageSize)
+	comments, total, err := h.postService.GetComments(postID, page, pageSize)
 	if err != nil {
 		logger.Error("Failed to get comments", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get comments"})
