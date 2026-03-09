@@ -1110,7 +1110,8 @@ Authorization: Bearer <access_token>
 ```json
 {
   "post_id": "1234567890123456789",
-  "is_liked": true
+  "is_liked": true,
+  "like_count": 10
 }
 ```
 
@@ -1119,7 +1120,8 @@ Authorization: Bearer <access_token>
 |--------|---------|------|
 | 401 | `{"error": "Authorization header required"}` | 缺少认证头 |
 | 400 | `{"error": "Invalid post ID"}` | 无效的帖子ID |
-| 500 | `{"error": "Failed to get like status"}` | 查询失败 |
+| 500 | `{"error": "Failed to get like status"}` | 查询点赞状态失败 |
+| 500 | `{"error": "Failed to get like count"}` | 查询点赞数量失败 |
 
 **测试用例：**
 1. 已点赞查询：`GET /api/posts/1/like`（已点赞的帖子）
@@ -1396,7 +1398,15 @@ Authorization: Bearer <access_token>
 ```json
 {
   "post_id": "1234567890123456789",
-  "is_favorited": true
+  "is_favorited": true,
+  "folders": [
+    {
+      "id": 1,
+      "user_id": "1234567890123456789",
+      "name": "我的收藏",
+      "created_at": "2023-01-01T00:00:00Z"
+    }
+  ]
 }
 ```
 

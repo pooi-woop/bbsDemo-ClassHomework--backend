@@ -535,7 +535,7 @@ func (h *PostHandler) UnlikePost(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Post unliked"})
 }
 
-// GetPostLikeStatus 获取当前用户对帖子的点赞状态
+// GetPostLikeStatus 获取当前用户对帖子的点赞状态和点赞数量
 func (h *PostHandler) GetPostLikeStatus(c *gin.Context) {
 	userID, _ := c.Get("userID")
 
@@ -552,13 +552,21 @@ func (h *PostHandler) GetPostLikeStatus(c *gin.Context) {
 		return
 	}
 
+	likeCount, err := h.postService.GetPostLikeCount(postID)
+	if err != nil {
+		logger.Error("Failed to get like count", zap.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get like count"})
+		return
+	}
+
 	c.JSON(http.StatusOK, gin.H{
-		"post_id":  postID,
-		"is_liked": isLiked,
+		"post_id":    postID,
+		"is_liked":   isLiked,
+		"like_count": likeCount,
 	})
 }
 
-// GetPostFavoriteStatus 获取当前用户对帖子的收藏状态
+// GetPostFavoriteStatus 获取当前用户对帖子的收藏状态和收藏夹信息
 func (h *PostHandler) GetPostFavoriteStatus(c *gin.Context) {
 	userID, _ := c.Get("userID")
 
@@ -568,7 +576,7 @@ func (h *PostHandler) GetPostFavoriteStatus(c *gin.Context) {
 		return
 	}
 
-	isFavorited, err := h.postService.IsPostFavorited(userID.(int64), postID)
+	isFavorited, folders, err := h.postService.GetPostFavoriteInfo(userID.(int64), postID)
 	if err != nil {
 		logger.Error("Failed to get favorite status", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get favorite status"})
@@ -578,6 +586,7 @@ func (h *PostHandler) GetPostFavoriteStatus(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"post_id":      postID,
 		"is_favorited": isFavorited,
+		"folders":      folders,
 	})
 }
 

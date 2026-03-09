@@ -902,18 +902,46 @@ func (s *PostService) IsPostLiked(userID int64, postID int64) (bool, error) {
 	return true, nil
 }
 
-// IsPostFavorited 检查用户是否收藏了帖子
-func (s *PostService) IsPostFavorited(userID int64, postID int64) (bool, error) {
-	var favorite models.Favorite
-	err := database.DB.Where("user_id = ? AND post_id = ?", userID, postID).First(&favorite).Error
+// GetPostLikeCount 获取帖子的点赞数量
+func (s *PostService) GetPostLikeCount(postID int64) (int64, error) {
+	var count int64
+	err := database.DB.Model(&models.Like{}).Where("post_id = ?", postID).Count(&count).Error
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return false, nil
-		}
-		logger.Error("Failed to check favorite status", zap.Error(err))
-		return false, err
+		logger.Error("Failed to get like count", zap.Error(err))
+		return 0, err
 	}
-	return true, nil
+	return count, nil
+}
+
+// GetPostFavoriteInfo 检查用户是否收藏了帖子以及收藏在哪些文件夹中
+func (s *PostService) GetPostFavoriteInfo(userID int64, postID int64) (bool, []models.FavoriteFolder, error) {
+	var favorites []models.Favorite
+	err := database.DB.Where("user_id = ? AND post_id = ?", userID, postID).Find(&favorites).Error
+	if err != nil {
+		logger.Error("Failed to check favorite status", zap.Error(err))
+		return false, nil, err
+	}
+
+	if len(favorites) == 0 {
+		return false, nil, nil
+	}
+
+	// 获取所有相关的收藏夹
+	var folderIDs []uint
+	for _, fav := range favorites {
+		folderIDs = append(folderIDs, fav.FolderID)
+	}
+
+	var folders []models.FavoriteFolder
+	if len(folderIDs) > 0 {
+		err = database.DB.Where("id IN ?", folderIDs).Find(&folders).Error
+		if err != nil {
+			logger.Error("Failed to get folders", zap.Error(err))
+			return true, nil, err
+		}
+	}
+
+	return true, folders, nil
 }
 
 func (s *PostService) LikeComment(userID int64, commentID uint) error {
