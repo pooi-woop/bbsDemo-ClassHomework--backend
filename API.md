@@ -944,50 +944,60 @@ Authorization: Bearer <access_token>
 2. 无权删除：使用其他用户的 token 删除评论
 3. 不存在的评论：`DELETE /api/comments/999`
 
-### 4.4 获取评论详情
+### 4.4 搜索评论
 
 **请求：**
 ```http
-GET /api/comments/1
+GET /api/comments?keyword=Hello&page=1&page_size=10
 ```
 
 **响应：**
 ```json
 {
-  "comment": {
-    "id": "1",
-    "post_id": "1234567890123456789",
-    "user_id": "1234567890123456789",
-    "content": "Great post!",
-    "is_deleted": false,
-    "created_at": "2023-01-01T00:00:00Z",
-    "updated_at": "2023-01-01T00:00:00Z",
-    "user": {
-      "id": "1234567890123456789",
-      "email": "user@example.com",
-      "nickname": "User",
-      "avatar": ""
-    },
-    "post": {
-      "id": "1234567890123456789",
-      "title": "Hello World",
-      "content": "This is a test post"
+  "comments": [
+    {
+      "id": "1",
+      "post_id": "1234567890123456789",
+      "user_id": "1234567890123456789",
+      "content": "Hello, great post!",
+      "is_deleted": false,
+      "created_at": "2023-01-01T00:00:00Z",
+      "updated_at": "2023-01-01T00:00:00Z",
+      "user": {
+        "id": "1234567890123456789",
+        "email": "user@example.com",
+        "nickname": "User",
+        "avatar": ""
+      },
+      "post": {
+        "id": "1234567890123456789",
+        "title": "Hello World",
+        "content": "This is a test post"
+      }
     }
-  }
+  ],
+  "total": 1,
+  "page": 1,
+  "page_size": 10,
+  "keyword": "Hello"
 }
 ```
+
+**参数说明：**
+- `keyword`：搜索关键词（必填），匹配评论内容
+- `page`：页码，默认 1
+- `page_size`：每页数量，默认 10
 
 **错误返回：**
 | 状态码 | 错误信息 | 说明 |
 |--------|---------|------|
-| 400 | `{"error": "Invalid comment ID"}` | 无效的评论ID |
-| 404 | `{"error": "Comment not found"}` | 评论不存在 |
-| 500 | `{"error": "Failed to get comment"}` | 获取失败 |
+| 400 | `{"error": "keyword is required"}` | 关键词不能为空 |
+| 500 | `{"error": "Failed to search comments"}` | 搜索失败 |
 
 **测试用例：**
-1. 正常获取：`GET /api/comments/1`
-2. 不存在的评论：`GET /api/comments/999`
-3. 无效ID：`GET /api/comments/invalid`
+1. 正常搜索：`GET /api/comments?keyword=Hello&page=1&page_size=10`
+2. 空关键词：`GET /api/comments?keyword=`
+3. 无结果搜索：`GET /api/comments?keyword=不存在的关键词`
 
 ### 4.5 获取回复（楼中楼）
 

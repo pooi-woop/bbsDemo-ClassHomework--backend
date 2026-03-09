@@ -427,28 +427,37 @@ func (h *PostHandler) GetComments(c *gin.Context) {
 	})
 }
 
-// GetComment 获取单个评论详情
-func (h *PostHandler) GetComment(c *gin.Context) {
-	commentID, err := strconv.ParseUint(c.Param("id"), 10, 32)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid comment ID"})
+// SearchComments 根据关键词搜索评论
+func (h *PostHandler) SearchComments(c *gin.Context) {
+	keyword := c.Query("keyword")
+	if keyword == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "keyword is required"})
 		return
 	}
 
-	comment, err := h.postService.GetCommentByID(uint(commentID))
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "10"))
+
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 || pageSize > 100 {
+		pageSize = 10
+	}
+
+	comments, total, err := h.postService.SearchComments(keyword, page, pageSize)
 	if err != nil {
-		switch err {
-		case service.ErrCommentNotFound:
-			c.JSON(http.StatusNotFound, gin.H{"error": "Comment not found"})
-		default:
-			logger.Error("Failed to get comment", zap.Error(err))
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get comment"})
-		}
+		logger.Error("Failed to search comments", zap.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to search comments"})
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"comment": comment,
+		"comments":  comments,
+		"total":     total,
+		"page":      page,
+		"page_size": pageSize,
+		"keyword":   keyword,
 	})
 }
 

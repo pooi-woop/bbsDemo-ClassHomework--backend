@@ -54,7 +54,7 @@ func InitRouter(userService *service.UserService, postService *service.PostServi
 	comments := r.Group("/api/comments")
 	comments.Use(middleware.OptionalAuth())
 	{
-		comments.GET("/:id", postHandler.GetComment)
+		comments.GET("", postHandler.SearchComments)
 		comments.GET("/:id/replies", postHandler.GetReplies)
 	}
 

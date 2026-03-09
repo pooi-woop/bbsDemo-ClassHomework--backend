@@ -741,17 +741,36 @@ func (s *PostService) GetComments(postID uint, page, pageSize int) ([]models.Com
 	return comments, total, nil
 }
 
-// GetCommentByID 根据ID查询单个评论
-func (s *PostService) GetCommentByID(commentID uint) (*models.Comment, error) {
-	var comment models.Comment
-	if err := database.DB.Preload("User").Preload("Post").First(&comment, commentID).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, ErrCommentNotFound
-		}
-		logger.Error("Failed to get comment", zap.Error(err))
-		return nil, err
+// SearchComments 根据关键词搜索评论
+func (s *PostService) SearchComments(keyword string, page, pageSize int) ([]models.Comment, int64, error) {
+	var comments []models.Comment
+	var total int64
+
+	offset := (page - 1) * pageSize
+
+	// 如果关键词为空，返回空结果
+	if keyword == "" {
+		return []models.Comment{}, 0, nil
 	}
-	return &comment, nil
+
+	query := database.DB.Model(&models.Comment{}).Preload("User").Preload("Post").
+		Where("content LIKE ?", "%"+keyword+"%")
+
+	if err := query.Count(&total).Error; err != nil {
+		logger.Error("Failed to count comments", zap.Error(err))
+		return nil, 0, err
+	}
+
+	if err := query.
+		Order("created_at DESC").
+		Offset(offset).
+		Limit(pageSize).
+		Find(&comments).Error; err != nil {
+		logger.Error("Failed to search comments", zap.Error(err))
+		return nil, 0, err
+	}
+
+	return comments, total, nil
 }
 
 func (s *PostService) GetAllComments(page, pageSize int) ([]models.Comment, int64, error) {
