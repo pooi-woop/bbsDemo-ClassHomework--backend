@@ -915,6 +915,7 @@ Authorization: Bearer <access_token>
 1. 正常创建：`{"post_id": 1, "content": "Great post!"}`
 2. 不存在的帖子：`{"post_id": 999, "content": "Great post!"}`
 3. 空内容：`{"post_id": 1, "content": ""}`
+4. 创建回复：`{"comment_id": 1, "content": "Thanks!"}`
 
 ### 4.3 删除评论
 
