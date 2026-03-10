@@ -631,6 +631,15 @@ func (s *PostService) CreateComment(userID int64, req CreateCommentRequest) (*mo
 		logger.Info("Parent comment found", zap.Uint64("comment_id", commentID))
 		commentIDUint := uint(commentID)
 		comment.CommentID = &commentIDUint
+		
+		// 从父评论中获取 PostID
+		if parentComment.PostID != nil {
+			comment.PostID = parentComment.PostID
+			logger.Info("Set post_id from parent comment", zap.Uint("post_id", *parentComment.PostID))
+		} else {
+			logger.Error("Parent comment has no post_id", zap.Uint64("comment_id", commentID))
+			return nil, errors.New("parent comment has no post_id")
+		}
 	}
 
 	if err := database.DB.Create(&comment).Error; err != nil {
