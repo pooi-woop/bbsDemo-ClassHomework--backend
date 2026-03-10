@@ -151,10 +151,10 @@ func (w *Worker) processViewCountQueue(workerID int) {
 				continue
 			}
 
-			// 提取 PostID
-			postIDFloat, ok := payloadMap["PostID"].(float64)
+			// 提取 post_id (JSON tag 使用 snake_case)
+			postIDFloat, ok := payloadMap["post_id"].(float64)
 			if !ok {
-				logger.Error("Invalid PostID format", zap.Any("PostID", payloadMap["PostID"]))
+				logger.Error("Invalid post_id format", zap.Any("post_id", payloadMap["post_id"]))
 				continue
 			}
 			postID := int64(postIDFloat)

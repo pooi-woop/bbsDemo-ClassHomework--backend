@@ -25,7 +25,8 @@ func InitMySQL(cfg config.MySQLConfig) error {
 
 	var err error
 	DB, err = gorm.Open(mysql.Open(dsn), &gorm.Config{
-		Logger: gormLogger.Default.LogMode(gormLogger.Info),
+		Logger:                                   gormLogger.Default.LogMode(gormLogger.Info),
+		DisableForeignKeyConstraintWhenMigrating: true,
 	})
 	if err != nil {
 		logger.Error("Failed to connect database",
