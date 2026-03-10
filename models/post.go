@@ -32,9 +32,9 @@ type Comment struct {
 	Content   string `gorm:"type:text;not null" json:"content"`
 	IsDeleted bool   `gorm:"default:false" json:"is_deleted"`
 
-	Post    *Post    `gorm:"foreignKey:PostID" json:"post,omitempty"`
-	Comment *Comment `gorm:"foreignKey:CommentID" json:"comment,omitempty"`
-	User    *User    `gorm:"foreignKey:UserID" json:"user,omitempty"`
+	Post    *Post    `gorm:"foreignKey:PostID;constraint:OnDelete:CASCADE" json:"post,omitempty"`
+	Comment *Comment `gorm:"foreignKey:CommentID;constraint:OnDelete:CASCADE" json:"comment,omitempty"`
+	User    *User    `gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE" json:"user,omitempty"`
 }
 
 type Like struct {
@@ -47,9 +47,9 @@ type Like struct {
 	PostID    *int64 `gorm:"index" json:"post_id,string"`
 	CommentID *uint  `gorm:"index" json:"comment_id,string"`
 
-	User    *User    `gorm:"foreignKey:UserID" json:"user,omitempty"`
-	Post    *Post    `gorm:"foreignKey:PostID" json:"post,omitempty"`
-	Comment *Comment `gorm:"foreignKey:CommentID" json:"comment,omitempty"`
+	User    *User    `gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE" json:"user,omitempty"`
+	Post    *Post    `gorm:"foreignKey:PostID;constraint:OnDelete:CASCADE" json:"post,omitempty"`
+	Comment *Comment `gorm:"foreignKey:CommentID;constraint:OnDelete:CASCADE" json:"comment,omitempty"`
 }
 
 type Block struct {

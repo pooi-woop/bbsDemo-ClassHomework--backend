@@ -144,23 +144,31 @@ func (w *Worker) processViewCountQueue(workerID int) {
 				continue
 			}
 
-			var view database.ViewCountMessage
-			payloadBytes, _ := json.Marshal(msg.Payload)
-			if err := json.Unmarshal(payloadBytes, &view); err != nil {
-				logger.Error("Failed to unmarshal view count message", zap.Error(err))
+			// 将 Payload 转换为 map
+			payloadMap, ok := msg.Payload.(map[string]interface{})
+			if !ok {
+				logger.Error("Invalid payload format", zap.Any("payload", msg.Payload))
 				continue
 			}
 
+			// 提取 PostID
+			postIDFloat, ok := payloadMap["PostID"].(float64)
+			if !ok {
+				logger.Error("Invalid PostID format", zap.Any("PostID", payloadMap["PostID"]))
+				continue
+			}
+			postID := int64(postIDFloat)
+
 			if err := database.DB.Model(&models.Post{}).
-			Where("id = ?", view.PostID).
-			UpdateColumn("views", gorm.Expr("views + 1")).Error; err != nil {
-			logger.Error("Failed to update view count",
-				zap.Int64("post_id", view.PostID),
-				zap.Error(err))
-		} else {
-			logger.Info("View count updated",
-				zap.Int64("post_id", view.PostID))
-		}
+				Where("id = ?", postID).
+				UpdateColumn("views", gorm.Expr("views + 1")).Error; err != nil {
+				logger.Error("Failed to update view count",
+					zap.Int64("post_id", postID),
+					zap.Error(err))
+			} else {
+				logger.Info("View count updated",
+					zap.Int64("post_id", postID))
+			}
 		}
 	}
 }

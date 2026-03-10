@@ -1,5 +1,36 @@
 # API 接口文档
 
+## 重要说明
+
+### ID 字段类型
+
+**所有 ID 字段（如 `id`、`user_id`、`post_id`、`comment_id`、`folder_id` 等）在 JSON 请求和响应中均为字符串类型**，以避免 JavaScript 数字精度丢失问题。
+
+例如：
+```json
+{
+  "id": "1234567890123456789",
+  "user_id": "1234567890123456789",
+  "post_id": "1234567890123456789"
+}
+```
+
+### 认证方式
+
+需要认证的接口必须在请求头中携带 `Authorization` 字段：
+```http
+Authorization: Bearer <access_token>
+```
+
+### 时间格式
+
+所有时间字段均采用 ISO 8601 格式（UTC）：
+```
+2023-01-01T00:00:00Z
+```
+
+---
+
 ## 1. 认证接口
 
 ### 1.1 发送验证码
@@ -423,7 +454,6 @@ avatar: <file>
 }
 ```
 
-**注意：** 所有 ID 字段（如 `id`、`user_id`、`post_id` 等）在 JSON 响应中均为**字符串类型**，以避免 JavaScript 数字精度丢失问题。
 ```
 
 **错误返回：**
@@ -883,7 +913,7 @@ Content-Type: application/json
 Authorization: Bearer <access_token>
 
 {
-  "post_id": 1234567890123456789,
+  "post_id": "1234567890123456789",
   "content": "Great post!"
 }
 ```
@@ -892,9 +922,9 @@ Authorization: Bearer <access_token>
 ```json
 {
   "comment": {
-    "id": 1,
-    "post_id": 1234567890123456789,
-    "user_id": 1234567890123456789,
+    "id": "1",
+    "post_id": "1234567890123456789",
+    "user_id": "1234567890123456789",
     "content": "Great post!",
     "like_count": 0,
     "created_at": "2023-01-01T00:00:00Z"
@@ -912,12 +942,59 @@ Authorization: Bearer <access_token>
 | 500 | `{"error": "Failed to create comment"}` | 创建失败 |
 
 **测试用例：**
-1. 正常创建：`{"post_id": 1, "content": "Great post!"}`
-2. 不存在的帖子：`{"post_id": 999, "content": "Great post!"}`
-3. 空内容：`{"post_id": 1, "content": ""}`
-4. 创建回复：`{"comment_id": 1, "content": "Thanks!"}`
+1. 正常创建：`{"post_id": "1234567890123456789", "content": "Great post!"}`
+2. 不存在的帖子：`{"post_id": "999", "content": "Great post!"}`
+3. 空内容：`{"post_id": "1", "content": ""}`
 
-### 4.3 删除评论
+### 4.3 创建评论回复（楼中楼）
+
+**请求：**
+```http
+POST /api/comments
+Content-Type: application/json
+Authorization: Bearer <access_token>
+
+{
+  "comment_id": "1",
+  "content": "Thanks for your reply!"
+}
+```
+
+**参数说明：**
+- `comment_id`：父评论 ID（必填），表示回复哪条评论
+- `content`：回复内容（必填）
+- 注意：创建回复时不需要提供 `post_id`，系统会自动从父评论获取
+
+**响应：**
+```json
+{
+  "comment": {
+    "id": "2",
+    "post_id": "1234567890123456789",
+    "comment_id": "1",
+    "user_id": "1234567890123456789",
+    "content": "Thanks for your reply!",
+    "like_count": 0,
+    "created_at": "2023-01-01T00:00:00Z"
+  }
+}
+```
+
+**错误返回：**
+| 状态码 | 错误信息 | 说明 |
+|--------|---------|------|
+| 400 | `{"error": "comment_id is required"}` | 评论 ID 不能为空 |
+| 400 | `{"error": "content is required"}` | 内容不能为空 |
+| 401 | `{"error": "Authorization header required"}` | 缺少认证头 |
+| 404 | `{"error": "Parent comment not found"}` | 父评论不存在 |
+| 500 | `{"error": "Failed to create comment"}` | 创建失败 |
+
+**测试用例：**
+1. 正常回复：`{"comment_id": "1", "content": "Thanks!"}`
+2. 不存在的评论：`{"comment_id": "999", "content": "Thanks!"}`
+3. 空内容：`{"comment_id": "1", "content": ""}`
+
+### 4.4 删除评论
 
 **请求：**
 ```http
@@ -945,7 +1022,7 @@ Authorization: Bearer <access_token>
 2. 无权删除：使用其他用户的 token 删除评论
 3. 不存在的评论：`DELETE /api/comments/999`
 
-### 4.4 搜索评论
+### 4.5 搜索评论
 
 **请求：**
 ```http
@@ -1000,7 +1077,7 @@ GET /api/comments?keyword=Hello&page=1&page_size=10
 2. 空关键词：`GET /api/comments?keyword=`
 3. 无结果搜索：`GET /api/comments?keyword=不存在的关键词`
 
-### 4.5 获取回复（楼中楼）
+### 4.6 获取回复（楼中楼）
 
 **请求：**
 ```http
@@ -1012,15 +1089,15 @@ GET /api/comments/1/replies?page=1&page_size=10
 {
   "replies": [
     {
-      "id": 2,
-      "post_id": 1234567890123456789,
-      "user_id": 1234567890123456789,
-      "parent_id": 1,
+      "id": "2",
+      "post_id": "1234567890123456789",
+      "user_id": "1234567890123456789",
+      "comment_id": "1",
       "content": "Thanks!",
       "like_count": 1,
       "created_at": "2023-01-01T00:00:00Z",
       "user": {
-        "id": 1234567890123456789,
+        "id": "1234567890123456789",
         "email": "user@example.com",
         "nickname": "User",
         "avatar": ""
@@ -1099,7 +1176,7 @@ Authorization: Bearer <access_token>
 1. 正常取消：`DELETE /api/posts/1/like`
 2. 未点赞取消：`DELETE /api/posts/1/like`（未点赞时取消）
 
-### 5.3 查询帖子点赞状态
+### 5.3 查询帖子点赞状态和数量
 
 **请求：**
 ```http
@@ -1116,6 +1193,13 @@ Authorization: Bearer <access_token>
 }
 ```
 
+**响应字段说明：**
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `post_id` | string | 帖子 ID |
+| `is_liked` | boolean | 当前用户是否点赞了该帖子 |
+| `like_count` | number | 该帖子的总点赞数量 |
+
 **错误返回：**
 | 状态码 | 错误信息 | 说明 |
 |--------|---------|------|
@@ -1125,8 +1209,8 @@ Authorization: Bearer <access_token>
 | 500 | `{"error": "Failed to get like count"}` | 查询点赞数量失败 |
 
 **测试用例：**
-1. 已点赞查询：`GET /api/posts/1/like`（已点赞的帖子）
-2. 未点赞查询：`GET /api/posts/1/like`（未点赞的帖子）
+1. 已点赞查询：`GET /api/posts/1234567890123456789/like`（已点赞的帖子）
+2. 未点赞查询：`GET /api/posts/1234567890123456789/like`（未点赞的帖子）
 3. 不存在的帖子：`GET /api/posts/999/like`
 
 ### 5.4 点赞评论
@@ -1387,7 +1471,7 @@ Authorization: Bearer <access_token>
 1. 正常取消：`DELETE /api/posts/1/favorite`
 2. 未收藏取消：`DELETE /api/posts/1/favorite`（未收藏时取消）
 
-### 6.7 查询帖子收藏状态
+### 6.7 查询帖子收藏状态和收藏夹信息
 
 **请求：**
 ```http
@@ -1395,21 +1479,48 @@ GET /api/posts/1234567890123456789/favorite
 Authorization: Bearer <access_token>
 ```
 
-**响应：**
+**响应（已收藏）：**
 ```json
 {
   "post_id": "1234567890123456789",
   "is_favorited": true,
   "folders": [
     {
-      "id": 1,
+      "id": "1",
       "user_id": "1234567890123456789",
       "name": "我的收藏",
+      "is_default": false,
       "created_at": "2023-01-01T00:00:00Z"
+    },
+    {
+      "id": "2",
+      "user_id": "1234567890123456789",
+      "name": "技术文章",
+      "is_default": false,
+      "created_at": "2023-01-02T00:00:00Z"
     }
   ]
 }
 ```
+
+**响应（未收藏）：**
+```json
+{
+  "post_id": "1234567890123456789",
+  "is_favorited": false,
+  "folders": []
+}
+```
+
+**响应字段说明：**
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `post_id` | string | 帖子 ID |
+| `is_favorited` | boolean | 当前用户是否收藏了该帖子 |
+| `folders` | array | 该帖子被收藏到的收藏夹列表（未收藏时为空数组） |
+| `folders[].id` | string | 收藏夹 ID |
+| `folders[].name` | string | 收藏夹名称 |
+| `folders[].is_default` | boolean | 是否为默认收藏夹 |
 
 **错误返回：**
 | 状态码 | 错误信息 | 说明 |
@@ -1419,9 +1530,10 @@ Authorization: Bearer <access_token>
 | 500 | `{"error": "Failed to get favorite status"}` | 查询失败 |
 
 **测试用例：**
-1. 已收藏查询：`GET /api/posts/1/favorite`（已收藏的帖子）
-2. 未收藏查询：`GET /api/posts/1/favorite`（未收藏的帖子）
-3. 不存在的帖子：`GET /api/posts/999/favorite`
+1. 已收藏查询（单收藏夹）：`GET /api/posts/1234567890123456789/favorite`
+2. 已收藏查询（多收藏夹）：帖子被收藏到多个收藏夹
+3. 未收藏查询：`GET /api/posts/1234567890123456789/favorite`（未收藏的帖子）
+4. 不存在的帖子：`GET /api/posts/999/favorite`
 
 ### 6.8 移动收藏
 
