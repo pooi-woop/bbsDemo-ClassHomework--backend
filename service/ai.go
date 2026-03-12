@@ -3,13 +3,43 @@ package service
 import (
 	"bbsDemo/database"
 	"fmt"
+
+	"github.com/cloudwego/eino/adk"
 )
 
 type AIService struct {
-	// 使用简单的实现替代eino库
+	einoClient *adk.ChatModelAgent
 }
 
 func NewAIService() *AIService {
+	// 注意：实际使用时需要从EinoExt仓库导入具体的ChatModel实现
+	// 这里暂时使用nil，实际部署时需要替换为真实的ChatModel
+	// 例如：chatModel, err := openai.NewChatModel(ctx, &openai.ChatModelConfig{...})
+
+	// 由于缺少具体的ChatModel实现，暂时返回nil
+	// 实际使用时需要取消注释以下代码并添加正确的导入
+	/*
+		chatModel, err := openai.NewChatModel(context.Background(), &openai.ChatModelConfig{
+			Model:  "gpt-3.5-turbo",
+			APIKey: "your-api-key-here",
+		})
+		if err != nil {
+			return nil
+		}
+
+		agent, err := adk.NewChatModelAgent(context.Background(), &adk.ChatModelAgentConfig{
+			Model: chatModel,
+		})
+		if err != nil {
+			return nil
+		}
+
+		return &AIService{
+			einoClient: agent,
+		}
+	*/
+
+	// 暂时返回一个简单的实现
 	return &AIService{}
 }
 
