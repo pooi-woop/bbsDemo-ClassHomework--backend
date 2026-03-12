@@ -60,6 +60,11 @@ func main() {
 		logger.Fatal("Failed to initialize Kafka", zap.Error(err))
 	}
 
+	if err := database.InitElasticsearch(cfg.Elasticsearch); err != nil {
+		logger.Fatal("Failed to initialize Elasticsearch", zap.Error(err))
+	}
+	defer database.CloseElasticsearch()
+
 	worker := queue.NewWorker(cfg.Email, 3)
 	worker.Start()
 

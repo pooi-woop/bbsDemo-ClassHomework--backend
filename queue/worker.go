@@ -304,7 +304,7 @@ func (w *Worker) sendEmail(to, subject, body string) error {
 		return nil
 	}
 
-	msg := []byte(fmt.Sprintf("From: %s\r\nTo: %s\r\nSubject: %s\r\n\r\n%s", w.emailConfig.From, to, subject, body))
+	msg := []byte(fmt.Sprintf("From: %s\r\nTo: %s\r\nSubject: %s\r\nMIME-Version: 1.0\r\nContent-Type: text/html; charset=utf-8\r\nContent-Transfer-Encoding: quoted-printable\r\n\r\n%s", w.emailConfig.From, to, subject, body))
 
 	auth := smtp.PlainAuth("", w.emailConfig.Username, w.emailConfig.Password, w.emailConfig.Host)
 	addr := fmt.Sprintf("%s:%d", w.emailConfig.Host, w.emailConfig.Port)

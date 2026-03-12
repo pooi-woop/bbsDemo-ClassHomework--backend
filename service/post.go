@@ -118,6 +118,21 @@ func (s *PostService) CreatePost(userID int64, req CreatePostRequest) (*models.P
 	}
 
 	logger.Info("Post created", zap.Int64("post_id", post.ID), zap.Int64("user_id", userID))
+
+	// 索引到Elasticsearch
+	doc := database.ESDocument{
+		ID:        strconv.FormatInt(post.ID, 10),
+		Type:      "post",
+		Title:     post.Title,
+		Content:   post.Content,
+		UserID:    post.UserID,
+		CreatedAt: post.CreatedAt,
+		UpdatedAt: post.UpdatedAt,
+	}
+	if err := database.IndexDocument("eyuforum", doc.ID, doc); err != nil {
+		logger.Error("Failed to index post to Elasticsearch", zap.Error(err))
+	}
+
 	return &post, nil
 }
 
@@ -147,6 +162,21 @@ func (s *PostService) UpdatePost(userID int64, postID int64, req UpdatePostReque
 	}
 
 	logger.Info("Post updated", zap.Int64("post_id", post.ID))
+
+	// 更新Elasticsearch索引
+	doc := database.ESDocument{
+		ID:        strconv.FormatInt(post.ID, 10),
+		Type:      "post",
+		Title:     post.Title,
+		Content:   post.Content,
+		UserID:    post.UserID,
+		CreatedAt: post.CreatedAt,
+		UpdatedAt: post.UpdatedAt,
+	}
+	if err := database.IndexDocument("eyuforum", doc.ID, doc); err != nil {
+		logger.Error("Failed to update post index in Elasticsearch", zap.Error(err))
+	}
+
 	return &post, nil
 }
 
@@ -683,6 +713,26 @@ func (s *PostService) CreateComment(userID int64, req CreateCommentRequest) (*mo
 	}
 
 	logger.Info("Comment created", zap.Uint("comment_id", comment.ID), zap.Int64("user_id", userID))
+
+	// 索引到Elasticsearch
+	var postID int64
+	if comment.PostID != nil {
+		postID = int64(*comment.PostID)
+	}
+	doc := database.ESDocument{
+		ID:        strconv.FormatUint(uint64(comment.ID), 10),
+		Type:      "comment",
+		Content:   comment.Content,
+		UserID:    comment.UserID,
+		PostID:    postID,
+		CommentID: comment.ID,
+		CreatedAt: comment.CreatedAt,
+		UpdatedAt: comment.UpdatedAt,
+	}
+	if err := database.IndexDocument("eyuforum", doc.ID, doc); err != nil {
+		logger.Error("Failed to index comment to Elasticsearch", zap.Error(err))
+	}
+
 	return &comment, nil
 }
 

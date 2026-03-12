@@ -14,6 +14,8 @@ func InitRouter(userService *service.UserService, postService *service.PostServi
 
 	authHandler := handler.NewAuthHandler(userService)
 	postHandler := handler.NewPostHandler(postService)
+	aiService := service.NewAIService()
+	aiHandler := handler.NewAIHandler(aiService)
 
 	r.GET("/ping", func(c *gin.Context) {
 		c.JSON(200, gin.H{"message": "pong"})
@@ -24,6 +26,13 @@ func InitRouter(userService *service.UserService, postService *service.PostServi
 	})
 
 	r.Static("/uploads", cfg.Upload.Path)
+
+	// AI 路由
+	ai := r.Group("/api/ai")
+	{
+		ai.POST("/ask", aiHandler.AskAI)
+		ai.POST("/stream-ask", aiHandler.StreamAskAI)
+	}
 
 	auth := r.Group("/api/auth")
 	{

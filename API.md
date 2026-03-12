@@ -1613,39 +1613,84 @@ Authorization: Bearer <access_token>
 **测试用例：**
 1. 正常获取：`GET /api/my/favorites?page=1&page_size=10`
 
-### 6.9 按收藏夹获取收藏
+## 7. AI 接口
+
+### 7.1 AI 问答
 
 **请求：**
 ```http
-GET /api/folders/1/posts?page=1&page_size=10
-Authorization: Bearer <access_token>
+POST /api/ai/ask
+Content-Type: application/json
+
+{
+  "question": "如何使用Elasticsearch？"
+}
 ```
 
 **响应：**
 ```json
 {
-  "favorites": [
-    {
-      "post": {
-        "id": 1234567890123456789,
-        "title": "Hello World",
-        "content": "This is a test post",
-        "views": 10,
-        "created_at": "2023-01-01T00:00:00Z",
-        "user": {
-          "id": 1234567890123456789,
-          "email": "user@example.com",
-          "nickname": "User"
-        }
-      },
-      "created_at": "2023-01-01T00:00:00Z"
-    }
-  ],
-  "total": 1
+  "answer": "Elasticsearch是一个开源的搜索引擎，主要用于全文搜索、结构化搜索和分析。在EyuForum中，我们使用Elasticsearch来存储和搜索帖子和评论..."
 }
 ```
 
 **错误返回：**
+| 状态码 | 错误信息 | 说明 |
+|--------|---------|------|
+| 400 | `{"error": "Invalid request"}` | 请求参数错误 |
+| 500 | `{"error": "Failed to get relevant documents"}` | 获取相关文档失败 |
+| 500 | `{"error": "Failed to generate answer"}` | 生成回答失败 |
+
+**测试用例：**
+1. 正常问答：`{"question": "如何使用Elasticsearch？"}`
+2. 空问题：`{"question": ""}`
+
+### 7.2 AI 流式问答
+
+**请求：**
+```http
+POST /api/ai/stream-ask
+Content-Type: application/json
+
+{
+  "question": "如何实现RAG技术？"
+}
+```
+
+**响应：**
+```
+event: message
+data: RAG
+
+event: message
+data: （检索增强生成）是一种结合了
+
+event: message
+data: 检索和生成的AI技术，
+
+event: message
+data: 通过先从知识库中检索相关信息，
+
+event: message
+data: 然后将这些信息作为上下文输入给语言模型，
+
+event: message
+data: 从而生成更准确、更相关的回答。
+
+event: end
+data: 
+```
+
+**错误返回：**
+| 状态码 | 错误信息 | 说明 |
+|--------|---------|------|
+| 400 | `{"error": "Invalid request"}` | 请求参数错误 |
+| 500 | `{"error": "Failed to get relevant documents"}` | 获取相关文档失败 |
+| 500 | `{"error": "Failed to generate answer"}` | 生成回答失败 |
+
+**测试用例：**
+1. 正常流式问答：`{"question": "如何实现RAG技术？"}`
+2. 空问题：`{"question": ""}`
 | 状态码 | 错误信息 | 说明 |
 |--------|---------|------|
 | 401 | `{"error": "Authorization header required"}` | 缺少认证头 |

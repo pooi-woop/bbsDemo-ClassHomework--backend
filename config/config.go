@@ -7,14 +7,15 @@ import (
 )
 
 type Config struct {
-	MySQL  MySQLConfig  `mapstructure:"mysql"`
-	Redis  RedisConfig  `mapstructure:"redis"`
-	Kafka  KafkaConfig  `mapstructure:"kafka"`
-	Server ServerConfig `mapstructure:"server"`
-	Logger LoggerConfig `mapstructure:"logger"`
-	JWT    JWTConfig    `mapstructure:"jwt"`
-	Email  EmailConfig  `mapstructure:"email"`
-	Upload UploadConfig `mapstructure:"upload"`
+	MySQL         MySQLConfig         `mapstructure:"mysql"`
+	Redis         RedisConfig         `mapstructure:"redis"`
+	Kafka         KafkaConfig         `mapstructure:"kafka"`
+	Elasticsearch ElasticsearchConfig `mapstructure:"elasticsearch"`
+	Server        ServerConfig        `mapstructure:"server"`
+	Logger        LoggerConfig        `mapstructure:"logger"`
+	JWT           JWTConfig           `mapstructure:"jwt"`
+	Email         EmailConfig         `mapstructure:"email"`
+	Upload        UploadConfig        `mapstructure:"upload"`
 }
 
 type MySQLConfig struct {
@@ -69,17 +70,25 @@ type UploadConfig struct {
 	AllowedExt string `mapstructure:"allowed_ext"`
 }
 
+type ElasticsearchConfig struct {
+	Hosts    []string `mapstructure:"hosts"`
+	Username string   `mapstructure:"username"`
+	Password string   `mapstructure:"password"`
+	Index    string   `mapstructure:"index"`
+}
+
 func LoadConfig(configPath string) (*Config, error) {
 	viper.SetConfigFile(configPath)
 	viper.SetConfigType("yaml")
 
-	viper.SetDefault("upload.path", "./uploads")
-	viper.SetDefault("upload.max_size", 5242880)
-	viper.SetDefault("upload.allowed_ext", ".jpg,.jpeg,.png,.gif,.webp")
 	viper.SetDefault("redis.host", "localhost")
 	viper.SetDefault("redis.port", 6379)
 	viper.SetDefault("redis.password", "")
 	viper.SetDefault("redis.db", 0)
+	viper.SetDefault("elasticsearch.hosts", []string{"http://localhost:9200"})
+	viper.SetDefault("elasticsearch.username", "")
+	viper.SetDefault("elasticsearch.password", "")
+	viper.SetDefault("elasticsearch.index", "eyuforum")
 
 	if err := viper.ReadInConfig(); err != nil {
 		return nil, fmt.Errorf("failed to read config file: %w", err)
