@@ -365,7 +365,7 @@ func (w *Worker) SendInboxNotificationEmail(userID int64, email string, messageC
 		return nil
 	}
 
-	subject := fmt.Sprintf("您有 %d 条新消息 - BBS Demo", messageCount)
+	subject := fmt.Sprintf("您有 %d 条新消息 - EyuForum（恶雨论坛）", messageCount)
 
 	messageList := ""
 	for i, msg := range messages {
@@ -452,7 +452,7 @@ func (w *Worker) SendInboxNotificationEmail(userID int64, email string, messageC
 <body>
     <div class="container">
         <div class="header">
-            <div class="logo">📬 BBS Demo</div>
+            <div class="logo">📬 EyuForum（恶雨论坛）</div>
         </div>
         
         <div class="notification-box">
@@ -469,7 +469,7 @@ func (w *Worker) SendInboxNotificationEmail(userID int64, email string, messageC
         
         <div class="footer">
             <p>此邮件由系统自动发送，请勿回复</p>
-            <p>© 2024 BBS Demo. All rights reserved.</p>
+            <p>© 2024 EyuForum（恶雨论坛）. All rights reserved.</p>
         </div>
     </div>
 </body>

@@ -153,7 +153,7 @@ func (s *UserService) SendVerificationCode(req SendCodeRequest) error {
 	}
 	s.codesMutex.Unlock()
 
-	subject := "Verification Code - BBS Demo"
+	subject := "Verification Code - EyuForum（恶雨论坛）"
 	body := fmt.Sprintf(`
 <!DOCTYPE html>
 <html>
@@ -218,7 +218,7 @@ func (s *UserService) SendVerificationCode(req SendCodeRequest) error {
 <body>
     <div class="container">
         <div class="header">
-            <div class="logo">📧 BBS Demo</div>
+            <div class="logo">📧 EyuForum（恶雨论坛）</div>
         </div>
         
         <p style="text-align: center; font-size: 18px; margin-bottom: 20px;">
@@ -226,7 +226,7 @@ func (s *UserService) SendVerificationCode(req SendCodeRequest) error {
         </p>
         
         <p style="text-align: center; color: #666;">
-            感谢您注册 BBS Demo，请使用以下验证码完成注册：
+            感谢您注册 EyuForum（恶雨论坛），请使用以下验证码完成注册：
         </p>
         
         <div class="code-box">%s</div>
@@ -240,7 +240,7 @@ func (s *UserService) SendVerificationCode(req SendCodeRequest) error {
         
         <div class="footer">
             <p>此邮件由系统自动发送，请勿回复</p>
-            <p>© 2024 BBS Demo. All rights reserved.</p>
+            <p>© 2024 EyuForum（恶雨论坛）. All rights reserved.</p>
         </div>
     </div>
 </body>
