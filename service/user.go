@@ -424,6 +424,10 @@ func (s *UserService) GetUserByID(userID int64) (*models.User, error) {
 	if user.DeletedAt.Valid {
 		user.DeletedAtStr = user.DeletedAt.Time.Format("2006-01-02 15:04:05")
 	}
+	// 确保头像路径是完整的
+	if user.Avatar != "" && !strings.HasPrefix(user.Avatar, "/uploads/") {
+		user.Avatar = "/uploads/" + user.Avatar
+	}
 	return &user, nil
 }
 

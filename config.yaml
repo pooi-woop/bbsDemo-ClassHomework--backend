@@ -40,15 +40,21 @@ email:
 
 elasticsearch:
   host: localhost
-  port: 9200
-  username: ""
-  password: ""
+  port: 9201
+  username: "elastic"
+  password: "VM2kN3mD_1psiMOe=rdM"
   index: eyuforum
 
 ai:
-  model: gpt-3.5-turbo
-  api_key: your-api-key-here
+  model: MiniMax-M2.5 (Pro)
+  api_key: sk-xcbrjhiczhbmmsonrnbzijcxlgtleeqthghvviueudgrquyq
+  api_base: https://api.siliconflow.cn/v1
   timeout: 30
   max_tokens: 1000
   temperature: 0.7
+
+upload:
+  path: uploads
+  max_size: 10485760
+  allowed_ext: .jpg,.jpeg,.png,.gif,.webp
 

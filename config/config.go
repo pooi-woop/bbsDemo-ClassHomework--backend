@@ -16,6 +16,7 @@ type Config struct {
 	JWT           JWTConfig           `mapstructure:"jwt"`
 	Email         EmailConfig         `mapstructure:"email"`
 	Upload        UploadConfig        `mapstructure:"upload"`
+	AI            AIConfig            `mapstructure:"ai"`
 }
 
 type MySQLConfig struct {
@@ -71,10 +72,20 @@ type UploadConfig struct {
 }
 
 type ElasticsearchConfig struct {
-	Hosts    []string `mapstructure:"hosts"`
-	Username string   `mapstructure:"username"`
-	Password string   `mapstructure:"password"`
-	Index    string   `mapstructure:"index"`
+	Host     string `mapstructure:"host"`
+	Port     int    `mapstructure:"port"`
+	Username string `mapstructure:"username"`
+	Password string `mapstructure:"password"`
+	Index    string `mapstructure:"index"`
+}
+
+type AIConfig struct {
+	Model       string  `mapstructure:"model"`
+	APIKey      string  `mapstructure:"api_key"`
+	APIBase     string  `mapstructure:"api_base"`
+	Timeout     int     `mapstructure:"timeout"`
+	MaxTokens   int     `mapstructure:"max_tokens"`
+	Temperature float64 `mapstructure:"temperature"`
 }
 
 func LoadConfig(configPath string) (*Config, error) {
@@ -85,10 +96,17 @@ func LoadConfig(configPath string) (*Config, error) {
 	viper.SetDefault("redis.port", 6379)
 	viper.SetDefault("redis.password", "")
 	viper.SetDefault("redis.db", 0)
-	viper.SetDefault("elasticsearch.hosts", []string{"http://localhost:9200"})
+	viper.SetDefault("elasticsearch.host", "localhost")
+	viper.SetDefault("elasticsearch.port", 9200)
 	viper.SetDefault("elasticsearch.username", "")
 	viper.SetDefault("elasticsearch.password", "")
 	viper.SetDefault("elasticsearch.index", "eyuforum")
+	viper.SetDefault("ai.model", "gpt-3.5-turbo")
+	viper.SetDefault("ai.api_key", "")
+	viper.SetDefault("ai.api_base", "https://api.siliconflow.cn/v1")
+	viper.SetDefault("ai.timeout", 30)
+	viper.SetDefault("ai.max_tokens", 1000)
+	viper.SetDefault("ai.temperature", 0.7)
 
 	if err := viper.ReadInConfig(); err != nil {
 		return nil, fmt.Errorf("failed to read config file: %w", err)

@@ -29,7 +29,9 @@ var (
 	ErrFolderNotYours   = errors.New("folder not yours")
 )
 
-type PostService struct{}
+type PostService struct {
+	aiService *AIService
+}
 
 type FavoriteWithFolder struct {
 	Post       models.Post `json:"post"`
@@ -53,7 +55,9 @@ type BlockedUserWithStatus struct {
 }
 
 func NewPostService() *PostService {
-	return &PostService{}
+	return &PostService{
+		aiService: NewAIService(),
+	}
 }
 
 type CreatePostRequest struct {
@@ -457,6 +461,7 @@ type SearchResult struct {
 		Posts int64 `json:"posts"`
 		Users int64 `json:"users"`
 	} `json:"total"`
+	AIAnswer string `json:"ai_answer,omitempty"`
 }
 
 // Search 综合搜索，同时搜索用户和帖子
@@ -564,6 +569,26 @@ func (s *PostService) Search(userID int64, keyword string, page, pageSize int) (
 	logger.Info("Search completed",
 		zap.Int64("post_total", postTotal),
 		zap.Int64("user_total", userTotal))
+
+	// 如果没有搜索结果，调用AI生成回答
+	if postTotal == 0 && userTotal == 0 {
+		logger.Info("No search results, calling AI for answer",
+			zap.String("keyword", keyword))
+
+		// 从Elasticsearch获取相关文档
+		documents, err := s.aiService.GetRelevantDocuments(keyword, 5)
+		if err != nil {
+			logger.Error("Failed to get relevant documents", zap.Error(err))
+		} else {
+			// 生成AI回答
+			answer, err := s.aiService.GenerateAnswer(keyword, documents)
+			if err != nil {
+				logger.Error("Failed to generate AI answer", zap.Error(err))
+			} else {
+				result.AIAnswer = answer
+			}
+		}
+	}
 
 	return result, nil
 }

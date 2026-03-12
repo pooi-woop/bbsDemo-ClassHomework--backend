@@ -5,8 +5,10 @@ import (
 	"bbsDemo/logger"
 	"bytes"
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"time"
 
 	"github.com/elastic/go-elasticsearch/v8"
@@ -32,9 +34,14 @@ type ESDocument struct {
 
 func InitElasticsearch(cfg config.ElasticsearchConfig) error {
 	esConfig := elasticsearch.Config{
-		Addresses: cfg.Hosts,
+		Addresses: []string{fmt.Sprintf("https://%s:%d", cfg.Host, cfg.Port)},
 		Username:  cfg.Username,
 		Password:  cfg.Password,
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{
+				InsecureSkipVerify: true,
+			},
+		},
 	}
 
 	client, err := elasticsearch.NewClient(esConfig)
@@ -64,7 +71,8 @@ func InitElasticsearch(cfg config.ElasticsearchConfig) error {
 	}
 
 	logger.Info("Elasticsearch connected successfully",
-		zap.Strings("hosts", cfg.Hosts),
+		zap.String("host", cfg.Host),
+		zap.Int("port", cfg.Port),
 		zap.String("index", cfg.Index))
 
 	return nil
@@ -75,13 +83,6 @@ func createIndex(index string) error {
 		"settings": map[string]interface{}{
 			"number_of_shards":   1,
 			"number_of_replicas": 0,
-			"analysis": map[string]interface{}{
-				"analyzer": map[string]interface{}{
-					"default": map[string]interface{}{
-						"type": "ik_max_word",
-					},
-				},
-			},
 		},
 		"mappings": map[string]interface{}{
 			"properties": map[string]interface{}{
@@ -92,12 +93,10 @@ func createIndex(index string) error {
 					"type": "keyword",
 				},
 				"title": map[string]interface{}{
-					"type":     "text",
-					"analyzer": "ik_max_word",
+					"type": "text",
 				},
 				"content": map[string]interface{}{
-					"type":     "text",
-					"analyzer": "ik_max_word",
+					"type": "text",
 				},
 				"user_id": map[string]interface{}{
 					"type": "long",
@@ -135,18 +134,20 @@ func createIndex(index string) error {
 	defer resp.Body.Close()
 
 	if resp.IsError() {
-		// 如果索引已存在，忽略错误
-		if resp.StatusCode == 400 {
-			var errorResp map[string]interface{}
-			if json.NewDecoder(resp.Body).Decode(&errorResp) == nil {
-				if errorResp["error"].(map[string]interface{})["type"] == "resource_already_exists_exception" {
-					return nil
-				}
+		var errorResp map[string]interface{}
+		if json.NewDecoder(resp.Body).Decode(&errorResp) == nil {
+			if errorResp["error"].(map[string]interface{})["type"] == "resource_already_exists_exception" {
+				logger.Info("Elasticsearch index already exists", zap.String("index", index))
+				return nil
 			}
+			logger.Error("Failed to create Elasticsearch index",
+				zap.String("index", index),
+				zap.String("error", fmt.Sprintf("%v", errorResp)))
 		}
 		return fmt.Errorf("failed to create index: %s", resp.Status())
 	}
 
+	logger.Info("Elasticsearch index created successfully", zap.String("index", index))
 	return nil
 }
 
