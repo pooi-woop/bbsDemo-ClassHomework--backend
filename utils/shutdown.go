@@ -4,6 +4,7 @@ import (
 	"bbsDemo/database"
 	"bbsDemo/logger"
 	"bbsDemo/queue"
+	"bbsDemo/scheduler"
 	"context"
 	"fmt"
 	"net/http"
@@ -16,14 +17,16 @@ import (
 type ShutdownManager struct {
 	server       *http.Server
 	worker       *queue.Worker
+	scheduler    *scheduler.Scheduler
 	shutdownMu   sync.Mutex
 	shutdownChan chan struct{}
 }
 
-func NewShutdownManager(server *http.Server, worker *queue.Worker) *ShutdownManager {
+func NewShutdownManager(server *http.Server, worker *queue.Worker, sched *scheduler.Scheduler) *ShutdownManager {
 	return &ShutdownManager{
 		server:       server,
 		worker:       worker,
+		scheduler:    sched,
 		shutdownChan: make(chan struct{}),
 	}
 }
@@ -45,7 +48,7 @@ func (sm *ShutdownManager) Shutdown(timeout time.Duration) error {
 	defer cancel()
 
 	var wg sync.WaitGroup
-	wg.Add(3)
+	wg.Add(4)
 
 	go func() {
 		defer wg.Done()
@@ -64,6 +67,15 @@ func (sm *ShutdownManager) Shutdown(timeout time.Duration) error {
 			logger.Info("All workers stopped gracefully")
 		} else {
 			logger.Warn("Workers stopped with timeout")
+		}
+	}()
+
+	go func() {
+		defer wg.Done()
+		logger.Info("Stopping scheduler")
+		if sm.scheduler != nil {
+			sm.scheduler.Stop()
+			logger.Info("Scheduler stopped")
 		}
 	}()
 

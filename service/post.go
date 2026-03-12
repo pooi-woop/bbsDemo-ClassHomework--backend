@@ -647,7 +647,7 @@ func (s *PostService) CreateComment(userID int64, req CreateCommentRequest) (*mo
 		return nil, err
 	}
 
-	// 发送收信箱消息
+	// 发送收信箱消息到Kafka
 	if req.CommentID != nil {
 		// 回复评论：给被回复的评论作者发送消息
 		var parentComment models.Comment
@@ -659,8 +659,8 @@ func (s *PostService) CreateComment(userID int64, req CreateCommentRequest) (*mo
 					SenderID:  userID,
 					Type:      "reply_comment",
 				}
-				if err := database.PushInboxMessage(parentComment.UserID, msg); err != nil {
-					logger.Error("Failed to push inbox message for reply_comment", zap.Error(err))
+				if err := database.ProduceInboxMessage(parentComment.UserID, msg); err != nil {
+					logger.Error("Failed to produce inbox message for reply_comment", zap.Error(err))
 				}
 			}
 		}
@@ -675,8 +675,8 @@ func (s *PostService) CreateComment(userID int64, req CreateCommentRequest) (*mo
 					SenderID: userID,
 					Type:     "reply_post",
 				}
-				if err := database.PushInboxMessage(post.UserID, msg); err != nil {
-					logger.Error("Failed to push inbox message for reply_post", zap.Error(err))
+				if err := database.ProduceInboxMessage(post.UserID, msg); err != nil {
+					logger.Error("Failed to produce inbox message for reply_post", zap.Error(err))
 				}
 			}
 		}

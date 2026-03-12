@@ -6,6 +6,7 @@ import (
 	"bbsDemo/logger"
 	"bbsDemo/queue"
 	"bbsDemo/router"
+	"bbsDemo/scheduler"
 	"bbsDemo/service"
 	"bbsDemo/utils"
 	"fmt"
@@ -62,6 +63,10 @@ func main() {
 	worker := queue.NewWorker(cfg.Email, 3)
 	worker.Start()
 
+	sched := scheduler.NewScheduler(worker)
+	sched.Start()
+	defer sched.Stop()
+
 	userService := service.NewUserService(cfg.Email, cfg.Upload)
 	postService := service.NewPostService()
 
@@ -71,7 +76,7 @@ func main() {
 		Handler: nil,
 	}
 
-	shutdownManager := utils.NewShutdownManager(server, worker)
+	shutdownManager := utils.NewShutdownManager(server, worker, sched)
 
 	r := router.InitRouter(userService, postService, cfg)
 	server.Handler = r

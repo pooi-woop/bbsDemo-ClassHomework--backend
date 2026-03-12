@@ -162,7 +162,6 @@ func PushLikeCount(postID int64, commentID uint, action string) error {
 
 func PushInboxMessage(userID int64, msg InboxMessage) error {
 	inboxKey := fmt.Sprintf("%s%d", InboxKeyPrefix, userID)
-	msg.Time = time.Now().Unix()
 
 	data, err := json.Marshal(msg)
 	if err != nil {
@@ -177,7 +176,7 @@ func PushInboxMessage(userID int64, msg InboxMessage) error {
 		return err
 	}
 
-	logger.Debug("Inbox message pushed",
+	logger.Debug("Inbox message pushed to Redis",
 		zap.Int64("user_id", userID),
 		zap.Any("message", msg))
 	return nil

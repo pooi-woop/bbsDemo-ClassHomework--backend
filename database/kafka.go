@@ -132,3 +132,48 @@ func ConsumeMessage() (*KafkaMessage, error) {
 
 	return &kafkaMsg, nil
 }
+
+type InboxKafkaPayload struct {
+	UserID int64        `json:"user_id"`
+	Msg    InboxMessage `json:"msg"`
+}
+
+func ProduceInboxMessage(userID int64, msg InboxMessage) error {
+	if KafkaWriter == nil {
+		return fmt.Errorf("kafka writer not initialized")
+	}
+
+	msg.Time = time.Now().Unix()
+	payload := InboxKafkaPayload{
+		UserID: userID,
+		Msg:    msg,
+	}
+
+	kafkaMsg := KafkaMessage{
+		Type:    "inbox",
+		Payload: payload,
+		Time:    time.Now().Unix(),
+	}
+
+	data, err := json.Marshal(kafkaMsg)
+	if err != nil {
+		logger.Error("Failed to marshal inbox kafka message", zap.Error(err))
+		return err
+	}
+
+	err = KafkaWriter.WriteMessages(kafkaCtx, kafka.Message{
+		Key:   []byte("inbox"),
+		Value: data,
+	})
+	if err != nil {
+		logger.Error("Failed to produce inbox message to kafka",
+			zap.Int64("user_id", userID),
+			zap.Error(err))
+		return err
+	}
+
+	logger.Debug("Inbox message produced to kafka",
+		zap.Int64("user_id", userID),
+		zap.Any("message", msg))
+	return nil
+}

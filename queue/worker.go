@@ -51,6 +51,12 @@ func (w *Worker) Start() {
 		w.wg.Add(1)
 		go w.processLikeCountQueue(i)
 	}
+
+	// 启动Kafka收信箱消费者
+	for i := 0; i < w.workerCount; i++ {
+		w.wg.Add(1)
+		go w.processInboxKafkaQueue(i)
+	}
 }
 
 func (w *Worker) Stop() {
@@ -217,6 +223,54 @@ func (w *Worker) processLikeCountQueue(workerID int) {
 	}
 }
 
+func (w *Worker) processInboxKafkaQueue(workerID int) {
+	defer w.wg.Done()
+	logger.Info("Inbox Kafka worker started", zap.Int("worker_id", workerID))
+
+	for {
+		select {
+		case <-w.stopChan:
+			logger.Info("Inbox Kafka worker stopped", zap.Int("worker_id", workerID))
+			return
+		default:
+			msg, err := database.ConsumeMessage()
+			if err != nil {
+				logger.Error("Failed to consume kafka message", zap.Error(err))
+				time.Sleep(time.Second)
+				continue
+			}
+
+			if msg == nil {
+				time.Sleep(time.Millisecond * 100)
+				continue
+			}
+
+			// 只处理收信箱消息
+			if msg.Type != "inbox" {
+				continue
+			}
+
+			payloadBytes, _ := json.Marshal(msg.Payload)
+			var inboxPayload database.InboxKafkaPayload
+			if err := json.Unmarshal(payloadBytes, &inboxPayload); err != nil {
+				logger.Error("Failed to unmarshal inbox payload", zap.Error(err))
+				continue
+			}
+
+			// 将消息存入Redis收信箱
+			if err := database.PushInboxMessage(inboxPayload.UserID, inboxPayload.Msg); err != nil {
+				logger.Error("Failed to push inbox message to Redis",
+					zap.Int64("user_id", inboxPayload.UserID),
+					zap.Error(err))
+			} else {
+				logger.Info("Inbox message processed",
+					zap.Int64("user_id", inboxPayload.UserID),
+					zap.String("type", inboxPayload.Msg.Type))
+			}
+		}
+	}
+}
+
 func (w *Worker) updateLikeCount(like *database.LikeCountMessage) error {
 	var delta int
 	if like.Action == "like" {
@@ -303,6 +357,125 @@ func (w *Worker) sendEmail(to, subject, body string) error {
 	}
 
 	return nil
+}
+
+func (w *Worker) SendInboxNotificationEmail(userID int64, email string, messageCount int, messages []database.InboxMessage) error {
+	if w.emailConfig.Host == "" {
+		logger.Info("Email config not set, skipping inbox notification", zap.Int64("user_id", userID))
+		return nil
+	}
+
+	subject := fmt.Sprintf("您有 %d 条新消息 - BBS Demo", messageCount)
+
+	messageList := ""
+	for i, msg := range messages {
+		if i >= 5 {
+			messageList += fmt.Sprintf(`<p style="color: #666; font-size: 14px;">... 还有 %d 条消息，请登录查看</p>`, messageCount-5)
+			break
+		}
+		msgType := "回复了您的帖子"
+		if msg.Type == "reply_comment" {
+			msgType = "回复了您的评论"
+		}
+		messageList += fmt.Sprintf(`
+<div style="background: #f8f9fa; border-left: 3px solid #667eea; padding: 12px; margin-bottom: 10px; border-radius: 4px;">
+    <p style="margin: 0; color: #333; font-size: 14px;">
+        <strong>用户 %d</strong> %s
+    </p>
+</div>`, msg.SenderID, msgType)
+	}
+
+	body := fmt.Sprintf(`
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f4f4f4;
+            padding: 20px;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            border-radius: 8px;
+            padding: 40px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .logo {
+            font-size: 28px;
+            font-weight: bold;
+            color: #4a90e2;
+        }
+        .notification-box {
+            background: linear-gradient(135deg, #667eea 0%%, #764ba2 100%%);
+            color: #ffffff;
+            font-size: 24px;
+            font-weight: bold;
+            padding: 20px;
+            text-align: center;
+            border-radius: 8px;
+            margin: 20px 0;
+            box-shadow: 0 4px 6px rgba(102, 126, 234, 0.3);
+        }
+        .message-list {
+            margin: 20px 0;
+        }
+        .footer {
+            text-align: center;
+            color: #999;
+            font-size: 14px;
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+        }
+        .btn {
+            display: inline-block;
+            background: linear-gradient(135deg, #667eea 0%%, #764ba2 100%%);
+            color: #ffffff;
+            padding: 12px 30px;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: bold;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">📬 BBS Demo</div>
+        </div>
+        
+        <div class="notification-box">
+            您有 %d 条新消息！
+        </div>
+        
+        <div class="message-list">
+            %s
+        </div>
+        
+        <div style="text-align: center;">
+            <a href="http://localhost:5173" class="btn">立即查看</a>
+        </div>
+        
+        <div class="footer">
+            <p>此邮件由系统自动发送，请勿回复</p>
+            <p>© 2024 BBS Demo. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+</html>`, messageCount, messageList)
+
+	return w.sendEmail(email, subject, body)
 }
 
 /*消息队列整体架构如下

@@ -153,8 +153,98 @@ func (s *UserService) SendVerificationCode(req SendCodeRequest) error {
 	}
 	s.codesMutex.Unlock()
 
-	subject := "Verification Code"
-	body := fmt.Sprintf("Your verification code is: %s. It will expire in 10 minutes.", code)
+	subject := "Verification Code - BBS Demo"
+	body := fmt.Sprintf(`
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f4f4f4;
+            padding: 20px;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            border-radius: 8px;
+            padding: 40px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .logo {
+            font-size: 28px;
+            font-weight: bold;
+            color: #4a90e2;
+        }
+        .code-box {
+            background: linear-gradient(135deg, #667eea 0%%, #764ba2 100%%);
+            color: #ffffff;
+            font-size: 36px;
+            font-weight: bold;
+            letter-spacing: 8px;
+            padding: 20px;
+            text-align: center;
+            border-radius: 8px;
+            margin: 30px 0;
+            box-shadow: 0 4px 6px rgba(102, 126, 234, 0.3);
+        }
+        .info {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+        }
+        .footer {
+            text-align: center;
+            color: #999;
+            font-size: 14px;
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+        }
+        .timer {
+            color: #e74c3c;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">📧 BBS Demo</div>
+        </div>
+        
+        <p style="text-align: center; font-size: 18px; margin-bottom: 20px;">
+            您好！
+        </p>
+        
+        <p style="text-align: center; color: #666;">
+            感谢您注册 BBS Demo，请使用以下验证码完成注册：
+        </p>
+        
+        <div class="code-box">%s</div>
+        
+        <div class="info">
+            <p>验证码将在 <span class="timer">10分钟</span> 后过期</p>
+            <p style="font-size: 14px; margin-top: 10px;">
+                如果这不是您的操作，请忽略此邮件
+            </p>
+        </div>
+        
+        <div class="footer">
+            <p>此邮件由系统自动发送，请勿回复</p>
+            <p>© 2024 BBS Demo. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+</html>`, code)
 	if err := database.PushEmail(req.Email, subject, body); err != nil {
 		logger.Error("Failed to push email to queue", zap.Error(err))
 		return err
