@@ -469,7 +469,7 @@ func (w *Worker) SendInboxNotificationEmail(userID int64, email string, messageC
         
         <div class="footer">
             <p>此邮件由系统自动发送，请勿回复</p>
-            <p>© 2024 EyuForum（恶雨论坛）. All rights reserved.</p>
+            <p>© 2026 EyuForum（恶雨论坛）. All rights reserved.</p>
         </div>
     </div>
 </body>
