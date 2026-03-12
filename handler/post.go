@@ -158,6 +158,46 @@ func (h *PostHandler) ListPosts(c *gin.Context) {
 	})
 }
 
+func (h *PostHandler) GetInbox(c *gin.Context) {
+	userID, _ := c.Get("userID")
+
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "10"))
+
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 || pageSize > 100 {
+		pageSize = 10
+	}
+
+	messages, total, err := h.postService.GetInbox(userID.(int64), page, pageSize)
+	if err != nil {
+		logger.Error("Failed to get inbox", zap.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get inbox"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"messages":  messages,
+		"total":     total,
+		"page":      page,
+		"page_size": pageSize,
+	})
+}
+
+func (h *PostHandler) ClearInbox(c *gin.Context) {
+	userID, _ := c.Get("userID")
+
+	if err := h.postService.ClearInbox(userID.(int64)); err != nil {
+		logger.Error("Failed to clear inbox", zap.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to clear inbox"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Inbox cleared"})
+}
+
 func (h *PostHandler) SearchPosts(c *gin.Context) {
 	keyword := c.Query("keyword")
 	if keyword == "" {

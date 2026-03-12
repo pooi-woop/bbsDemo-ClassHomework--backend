@@ -1819,9 +1819,132 @@ Authorization: Bearer <access_token>
 **测试用例：**
 1. 正常获取：`GET /api/my/posts?page=1&page_size=10`
 
-## 9. 管理员接口
+## 9. 收信箱
 
-### 9.1 管理员删除帖子
+### 9.1 获取收信箱消息
+
+当有人回复你的帖子或评论时，会收到消息通知。
+
+**消息类型：**
+- `reply_post` - 有人回复了你的帖子
+- `reply_comment` - 有人回复了你的评论
+
+**请求：**
+```http
+GET /api/inbox?page=1&page_size=10
+Authorization: Bearer <access_token>
+```
+
+**响应：**
+```json
+{
+  "messages": [
+    {
+      "post_id": "1234567890123456789",
+      "comment_id": "456",
+      "sender_id": "789",
+      "type": "reply_comment",
+      "time": 1234567890
+    },
+    {
+      "post_id": "1234567890123456789",
+      "sender_id": "789",
+      "type": "reply_post",
+      "time": 1234567891
+    }
+  ],
+  "total": 2,
+  "page": 1,
+  "page_size": 10
+}
+```
+
+**字段说明：**
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `post_id` | string | 帖子ID |
+| `comment_id` | string | 评论ID（回复帖子时为空） |
+| `sender_id` | string | 回复者用户ID |
+| `type` | string | 消息类型：`reply_post` 或 `reply_comment` |
+| `time` | number | 消息时间戳（Unix时间） |
+
+**错误返回：**
+| 状态码 | 错误信息 | 说明 |
+|--------|---------|------|
+| 401 | `{"error": "Authorization header required"}` | 缺少认证头 |
+| 500 | `{"error": "Failed to get inbox"}` | 获取失败 |
+
+**测试用例：**
+1. 正常获取：`GET /api/inbox?page=1&page_size=10`
+2. 空收信箱：新用户获取收信箱
+
+### 9.2 清空收信箱
+
+**请求：**
+```http
+DELETE /api/inbox
+Authorization: Bearer <access_token>
+```
+
+**响应：**
+```json
+{
+  "message": "Inbox cleared"
+}
+```
+
+**错误返回：**
+| 状态码 | 错误信息 | 说明 |
+|--------|---------|------|
+| 401 | `{"error": "Authorization header required"}` | 缺少认证头 |
+| 500 | `{"error": "Failed to clear inbox"}` | 清空失败 |
+
+**测试用例：**
+1. 正常清空：`DELETE /api/inbox`
+
+## 10. 管理员接口
+
+### 10.1 管理员删除帖子
+
+**请求：**
+```http
+GET /api/my/posts?page=1&page_size=10
+Authorization: Bearer <access_token>
+```
+
+**响应：**
+```json
+{
+  "posts": [
+    {
+      "id": 1234567890123456789,
+      "user_id": 1234567890123456789,
+      "title": "Hello World",
+      "content": "This is a test post",
+      "views": 10,
+      "like_count": 5,
+      "comment_count": 3,
+      "created_at": "2023-01-01T00:00:00Z"
+    }
+  ],
+  "total": 1,
+  "page": 1,
+  "page_size": 10
+}
+```
+
+**错误返回：**
+| 状态码 | 错误信息 | 说明 |
+|--------|---------|------|
+| 401 | `{"error": "Authorization header required"}` | 缺少认证头 |
+| 500 | `{"error": "Failed to get posts"}` | 获取失败 |
+
+**测试用例：**
+1. 正常获取：`GET /api/my/posts?page=1&page_size=10`
+
+## 10. 管理员接口
+
+### 10.1 管理员删除帖子
 
 **请求：**
 ```http
@@ -1849,7 +1972,7 @@ Authorization: Bearer <admin_access_token>
 2. 普通用户尝试：使用普通用户 token 访问
 3. 不存在的帖子：`DELETE /api/admin/posts/999`
 
-### 9.2 管理员删除评论
+### 10.2 管理员删除评论
 
 **请求：**
 ```http
@@ -1877,7 +2000,7 @@ Authorization: Bearer <admin_access_token>
 2. 普通用户尝试：使用普通用户 token 访问
 3. 不存在的评论：`DELETE /api/admin/comments/999`
 
-### 9.3 管理员查看所有评论
+### 10.3 管理员查看所有评论
 
 **请求：**
 ```http
@@ -1932,7 +2055,7 @@ Authorization: Bearer <admin_access_token>
 2. 普通用户尝试：使用普通用户 token 访问
 3. 分页查询：`GET /api/admin/comments?page=2&page_size=5`
 
-### 9.4 禁言用户
+### 10.4 禁言用户
 
 **请求：**
 ```http
@@ -1960,7 +2083,7 @@ Authorization: Bearer <admin_access_token>
 2. 普通用户尝试：使用普通用户 token 访问
 3. 不存在的用户：`PUT /api/admin/users/999/ban`
 
-### 9.4 解除禁言
+### 10.5 解除禁言
 
 **请求：**
 ```http
@@ -1988,7 +2111,7 @@ Authorization: Bearer <admin_access_token>
 2. 普通用户尝试：使用普通用户 token 访问
 3. 不存在的用户：`PUT /api/admin/users/999/unban`
 
-### 9.5 查看所有用户
+### 10.6 查看所有用户
 
 **请求：**
 ```http
@@ -2035,9 +2158,9 @@ Authorization: Bearer <admin_access_token>
 2. 普通用户尝试：使用普通用户 token 访问
 3. 分页查询：`GET /api/admin/users?page=2&page_size=5`
 
-## 10. 中间件说明
+## 11. 中间件说明
 
-### 10.1 AuthRequired 中间件
+### 11.1 AuthRequired 中间件
 
 **功能：** 验证用户登录状态
 
@@ -2052,7 +2175,7 @@ router.Use(middleware.AuthRequired())
 - 将用户信息（userID, email, isAdmin）存入上下文
 - 令牌无效或过期时返回 401 错误
 
-### 10.2 AdminRequired 中间件
+### 11.2 AdminRequired 中间件
 
 **功能：** 验证管理员权限
 
@@ -2069,7 +2192,7 @@ router.Use(middleware.AdminRequired())
 
 **注意：** AdminRequired 中间件必须与 AuthRequired 中间件一起使用，且 AuthRequired 必须在前面。
 
-## 11. 错误代码汇总
+## 12. 错误代码汇总
 
 | 状态码 | 含义 | 常见场景 |
 |--------|------|---------|

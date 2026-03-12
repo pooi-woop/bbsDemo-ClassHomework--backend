@@ -102,6 +102,9 @@ func InitRouter(userService *service.UserService, postService *service.PostServi
 		authorized.PUT("/folders/:id", postHandler.UpdateFolder)
 		authorized.DELETE("/folders/:id", postHandler.DeleteFolder)
 		authorized.GET("/folders/:id/posts", postHandler.GetFavoritesByFolder)
+
+		authorized.GET("/inbox", postHandler.GetInbox)
+		authorized.DELETE("/inbox", postHandler.ClearInbox)
 	}
 
 	// 管理员路由

@@ -631,7 +631,7 @@ func (s *PostService) CreateComment(userID int64, req CreateCommentRequest) (*mo
 		logger.Info("Parent comment found", zap.Uint64("comment_id", commentID))
 		commentIDUint := uint(commentID)
 		comment.CommentID = &commentIDUint
-		
+
 		// 从父评论中获取 PostID
 		if parentComment.PostID != nil {
 			comment.PostID = parentComment.PostID
@@ -645,6 +645,41 @@ func (s *PostService) CreateComment(userID int64, req CreateCommentRequest) (*mo
 	if err := database.DB.Create(&comment).Error; err != nil {
 		logger.Error("Failed to create comment", zap.Error(err))
 		return nil, err
+	}
+
+	// 发送收信箱消息
+	if req.CommentID != nil {
+		// 回复评论：给被回复的评论作者发送消息
+		var parentComment models.Comment
+		if err := database.DB.First(&parentComment, comment.CommentID).Error; err == nil {
+			if parentComment.UserID != userID {
+				msg := database.InboxMessage{
+					PostID:    int64(*comment.PostID),
+					CommentID: comment.ID,
+					SenderID:  userID,
+					Type:      "reply_comment",
+				}
+				if err := database.PushInboxMessage(parentComment.UserID, msg); err != nil {
+					logger.Error("Failed to push inbox message for reply_comment", zap.Error(err))
+				}
+			}
+		}
+	} else if req.PostID != nil {
+		// 回复帖子：给帖子作者发送消息
+		var post models.Post
+		postID := int64(*comment.PostID)
+		if err := database.DB.First(&post, postID).Error; err == nil {
+			if post.UserID != userID {
+				msg := database.InboxMessage{
+					PostID:   postID,
+					SenderID: userID,
+					Type:     "reply_post",
+				}
+				if err := database.PushInboxMessage(post.UserID, msg); err != nil {
+					logger.Error("Failed to push inbox message for reply_post", zap.Error(err))
+				}
+			}
+		}
 	}
 
 	logger.Info("Comment created", zap.Uint("comment_id", comment.ID), zap.Int64("user_id", userID))
@@ -1378,7 +1413,6 @@ func (s *PostService) GetMyPosts(userID int64, page, pageSize int) ([]models.Pos
 		return nil, 0, err
 	}
 
-	// 重新构建查询以包含 Preload
 	findQuery := database.DB.Model(&models.Post{}).Preload("User").Where("user_id = ?", userID)
 
 	if err := findQuery.
@@ -1390,4 +1424,12 @@ func (s *PostService) GetMyPosts(userID int64, page, pageSize int) ([]models.Pos
 	}
 
 	return posts, total, nil
+}
+
+func (s *PostService) GetInbox(userID int64, page, pageSize int) ([]database.InboxMessage, int64, error) {
+	return database.GetInboxMessages(userID, page, pageSize)
+}
+
+func (s *PostService) ClearInbox(userID int64) error {
+	return database.ClearInbox(userID)
 }

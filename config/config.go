@@ -9,6 +9,7 @@ import (
 type Config struct {
 	MySQL  MySQLConfig  `mapstructure:"mysql"`
 	Redis  RedisConfig  `mapstructure:"redis"`
+	Kafka  KafkaConfig  `mapstructure:"kafka"`
 	Server ServerConfig `mapstructure:"server"`
 	Logger LoggerConfig `mapstructure:"logger"`
 	JWT    JWTConfig    `mapstructure:"jwt"`
@@ -29,6 +30,12 @@ type RedisConfig struct {
 	Port     int    `mapstructure:"port"`
 	Password string `mapstructure:"password"`
 	DB       int    `mapstructure:"db"`
+}
+
+type KafkaConfig struct {
+	Brokers []string `mapstructure:"brokers"`
+	Topic   string   `mapstructure:"topic"`
+	GroupID string   `mapstructure:"group_id"`
 }
 
 type ServerConfig struct {

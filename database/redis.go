@@ -21,6 +21,7 @@ const (
 	QueueKeyEmail     = "queue:email"
 	QueueKeyViewCount = "queue:view_count"
 	QueueKeyLikeCount = "queue:like_count"
+	InboxKeyPrefix    = "inbox:"
 )
 
 type RedisMessage struct {
@@ -43,6 +44,14 @@ type LikeCountMessage struct {
 	PostID    int64  `json:"post_id,omitempty"`
 	CommentID uint   `json:"comment_id,omitempty"`
 	Action    string `json:"action"`
+}
+
+type InboxMessage struct {
+	PostID    int64  `json:"post_id"`
+	CommentID uint   `json:"comment_id,omitempty"`
+	SenderID  int64  `json:"sender_id"`
+	Type      string `json:"type"`
+	Time      int64  `json:"time"`
 }
 
 func InitRedis(cfg config.RedisConfig) error {
@@ -149,4 +158,67 @@ func PushLikeCount(postID int64, commentID uint, action string) error {
 		Action:    action,
 	}
 	return PushMessage(QueueKeyLikeCount, like)
+}
+
+func PushInboxMessage(userID int64, msg InboxMessage) error {
+	inboxKey := fmt.Sprintf("%s%d", InboxKeyPrefix, userID)
+	msg.Time = time.Now().Unix()
+
+	data, err := json.Marshal(msg)
+	if err != nil {
+		logger.Error("Failed to marshal inbox message", zap.Error(err))
+		return err
+	}
+
+	if err := RedisClient.LPush(redisCtx, inboxKey, data).Err(); err != nil {
+		logger.Error("Failed to push inbox message",
+			zap.Int64("user_id", userID),
+			zap.Error(err))
+		return err
+	}
+
+	logger.Debug("Inbox message pushed",
+		zap.Int64("user_id", userID),
+		zap.Any("message", msg))
+	return nil
+}
+
+func GetInboxMessages(userID int64, page, pageSize int) ([]InboxMessage, int64, error) {
+	inboxKey := fmt.Sprintf("%s%d", InboxKeyPrefix, userID)
+
+	total, err := RedisClient.LLen(redisCtx, inboxKey).Result()
+	if err != nil {
+		logger.Error("Failed to get inbox length", zap.Error(err))
+		return nil, 0, err
+	}
+
+	start := int64((page - 1) * pageSize)
+	end := start + int64(pageSize) - 1
+
+	results, err := RedisClient.LRange(redisCtx, inboxKey, start, end).Result()
+	if err != nil {
+		logger.Error("Failed to get inbox messages", zap.Error(err))
+		return nil, 0, err
+	}
+
+	var messages []InboxMessage
+	for _, data := range results {
+		var msg InboxMessage
+		if err := json.Unmarshal([]byte(data), &msg); err != nil {
+			logger.Error("Failed to unmarshal inbox message", zap.Error(err))
+			continue
+		}
+		messages = append(messages, msg)
+	}
+
+	return messages, total, nil
+}
+
+func ClearInbox(userID int64) error {
+	inboxKey := fmt.Sprintf("%s%d", InboxKeyPrefix, userID)
+	if err := RedisClient.Del(redisCtx, inboxKey).Err(); err != nil {
+		logger.Error("Failed to clear inbox", zap.Error(err))
+		return err
+	}
+	return nil
 }
