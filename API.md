@@ -1639,46 +1639,44 @@ Content-Type: application/json
 |--------|---------|------|
 | 400 | `{"error": "Invalid request"}` | 请求参数错误 |
 | 500 | `{"error": "Failed to get relevant documents"}` | 获取相关文档失败 |
-| 500 | `{"error": "Failed to generate answer"}` | 生成回答失败 |
 
-**测试用例：**
-1. 正常问答：`{"question": "如何使用Elasticsearch？"}`
-2. 空问题：`{"question": ""}`
-
-### 7.2 AI 流式问答
+### 7.2 AI 问答（流式传输）
 
 **请求：**
 ```http
-POST /api/ai/stream-ask
+POST /api/ai/ask/stream
 Content-Type: application/json
 
 {
-  "question": "如何实现RAG技术？"
+  "question": "如何使用Elasticsearch？"
 }
 ```
 
 **响应：**
+- 响应类型：`text/event-stream`
+- 响应格式：SSE (Server-Sent Events)
+
 ```
-event: message
-data: RAG
+data: 基于论坛内容的回答：
 
-event: message
-data: （检索增强生成）是一种结合了
-
-event: message
-data: 检索和生成的AI技术，
-
-event: message
-data: 通过先从知识库中检索相关信息，
-
-event: message
-data: 然后将这些信息作为上下文输入给语言模型，
-
-event: message
-data: 从而生成更准确、更相关的回答。
-
-event: end
 data: 
+
+data: 相关内容：
+
+data: 
+
+data: 1. 标题: Elasticsearch使用指南
+内容: Elasticsearch是一个强大的搜索引擎，可用于论坛的内容搜索和分析。
+
+data: 
+
+data: 问题：如何使用Elasticsearch？
+
+data: 
+
+data: 这是一个基于论坛内容的智能回答。
+
+data: [DONE]
 ```
 
 **错误返回：**
@@ -1686,26 +1684,23 @@ data:
 |--------|---------|------|
 | 400 | `{"error": "Invalid request"}` | 请求参数错误 |
 | 500 | `{"error": "Failed to get relevant documents"}` | 获取相关文档失败 |
-| 500 | `{"error": "Failed to generate answer"}` | 生成回答失败 |
 
-**测试用例：**
-1. 正常流式问答：`{"question": "如何实现RAG技术？"}`
-2. 空问题：`{"question": ""}`
-| 状态码 | 错误信息 | 说明 |
-|--------|---------|------|
-| 401 | `{"error": "Authorization header required"}` | 缺少认证头 |
-| 404 | `{"error": "folder not found"}` | 收藏夹不存在 |
-| 403 | `{"error": "folder not yours"}` | 收藏夹不属于用户 |
-| 500 | `{"error": "Failed to get favorites"}` | 获取失败 |
+### 7.3 AI 接口实现说明
 
-**测试用例：**
-1. 正常获取：`GET /api/folders/1/posts?page=1&page_size=10`
-2. 不存在的收藏夹：`GET /api/folders/999/posts`
-3. 无权限访问：使用其他用户的 token
+- **技术栈**：使用字节跳动的 Eino 库实现 RAG (Retrieval-Augmented Generation) 模式
+- **数据流**：
+  1. 接收用户问题
+  2. 从 Elasticsearch 检索相关文档
+  3. 使用 Eino 库的 ChatModelAgent 生成回答
+  4. 支持标准 JSON 响应和流式 SSE 响应
+- **特点**：
+  - 基于论坛真实内容生成回答
+  - 支持实时流式输出
+  - 集成字节跳动 Eino 库的能力
 
-## 7. 拉黑接口
+## 8. 拉黑接口
 
-### 7.1 拉黑用户
+### 8.1 拉黑用户
 
 **请求：**
 ```http
