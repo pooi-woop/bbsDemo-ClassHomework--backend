@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/redis/go-redis/v9"
@@ -47,9 +48,9 @@ type LikeCountMessage struct {
 }
 
 type InboxMessage struct {
-	PostID    int64  `json:"post_id"`
-	CommentID uint   `json:"comment_id,omitempty"`
-	SenderID  int64  `json:"sender_id"`
+	PostID    string `json:"post_id"`
+	CommentID string `json:"comment_id,omitempty"`
+	SenderID  string `json:"sender_id"`
 	Type      string `json:"type"`
 	Time      int64  `json:"time"`
 }
@@ -161,7 +162,7 @@ func PushLikeCount(postID int64, commentID uint, action string) error {
 }
 
 func PushInboxMessage(userID int64, msg InboxMessage) error {
-	inboxKey := fmt.Sprintf("%s%d", InboxKeyPrefix, userID)
+	inboxKey := fmt.Sprintf("%s%s", InboxKeyPrefix, strconv.FormatInt(userID, 10))
 
 	data, err := json.Marshal(msg)
 	if err != nil {
@@ -183,7 +184,7 @@ func PushInboxMessage(userID int64, msg InboxMessage) error {
 }
 
 func GetInboxMessages(userID int64, page, pageSize int) ([]InboxMessage, int64, error) {
-	inboxKey := fmt.Sprintf("%s%d", InboxKeyPrefix, userID)
+	inboxKey := fmt.Sprintf("%s%s", InboxKeyPrefix, strconv.FormatInt(userID, 10))
 
 	total, err := RedisClient.LLen(redisCtx, inboxKey).Result()
 	if err != nil {

@@ -7,6 +7,7 @@ import (
 	"bbsDemo/utils"
 	"fmt"
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 )
@@ -41,15 +42,23 @@ func AuthRequired() gin.HandlerFunc {
 			return
 		}
 
+		// 将字符串用户ID转换为int64
+		userID, err := strconv.ParseInt(claims.UserID, 10, 64)
+		if err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid user ID in token"})
+			c.Abort()
+			return
+		}
+
 		// 获取用户信息，包括是否为管理员
 		var user models.User
-		if err := database.DB.First(&user, claims.UserID).Error; err != nil {
+		if err := database.DB.First(&user, userID).Error; err != nil {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "User not found"})
 			c.Abort()
 			return
 		}
 
-		c.Set("userID", claims.UserID)
+		c.Set("userID", userID)
 		c.Set("email", claims.Email)
 		c.Set("isAdmin", user.IsAdmin)
 		c.Next()
@@ -102,14 +111,21 @@ func OptionalAuth() gin.HandlerFunc {
 			return
 		}
 
-		// 获取用户信息
-		var user models.User
-		if err := database.DB.First(&user, claims.UserID).Error; err != nil {
+		// 将字符串用户ID转换为int64
+		userID, err := strconv.ParseInt(claims.UserID, 10, 64)
+		if err != nil {
 			c.Next()
 			return
 		}
 
-		c.Set("userID", claims.UserID)
+		// 获取用户信息
+		var user models.User
+		if err := database.DB.First(&user, userID).Error; err != nil {
+			c.Next()
+			return
+		}
+
+		c.Set("userID", userID)
 		c.Set("email", claims.Email)
 		c.Set("isAdmin", user.IsAdmin)
 		c.Next()

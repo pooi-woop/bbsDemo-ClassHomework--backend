@@ -11,6 +11,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -367,14 +368,21 @@ func (s *UserService) RefreshToken(refreshToken string, ip, userAgent string) (*
 	token.IsRevoked = true
 	database.DB.Save(&token)
 
-	tokenPair, err := utils.GenerateTokenPair(claims.UserID, claims.Email)
+	// 将字符串用户ID转换为int64
+	userID, err := strconv.ParseInt(claims.UserID, 10, 64)
+	if err != nil {
+		logger.Error("Failed to parse user ID", zap.Error(err))
+		return nil, err
+	}
+
+	tokenPair, err := utils.GenerateTokenPair(userID, claims.Email)
 	if err != nil {
 		logger.Error("Failed to generate tokens", zap.Error(err))
 		return nil, err
 	}
 
 	newRefreshToken := models.RefreshToken{
-		UserID:    claims.UserID,
+		UserID:    userID,
 		Token:     tokenPair.RefreshToken,
 		ExpiresAt: time.Now().Add(time.Hour * 24 * 7),
 		IP:        ip,
@@ -385,7 +393,7 @@ func (s *UserService) RefreshToken(refreshToken string, ip, userAgent string) (*
 		return nil, err
 	}
 
-	logger.Info("Token refreshed", zap.Int64("user_id", claims.UserID))
+	logger.Info("Token refreshed", zap.Int64("user_id", userID))
 	return tokenPair, nil
 }
 

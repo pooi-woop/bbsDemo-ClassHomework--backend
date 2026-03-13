@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/smtp"
+	"strconv"
 	"sync"
 	"time"
 
@@ -257,14 +258,21 @@ func (w *Worker) processInboxKafkaQueue(workerID int) {
 				continue
 			}
 
+			// 将字符串用户ID转换为int64
+			userID, err := strconv.ParseInt(inboxPayload.UserID, 10, 64)
+			if err != nil {
+				logger.Error("Failed to parse user ID", zap.Error(err))
+				continue
+			}
+
 			// 将消息存入Redis收信箱
-			if err := database.PushInboxMessage(inboxPayload.UserID, inboxPayload.Msg); err != nil {
+			if err := database.PushInboxMessage(userID, inboxPayload.Msg); err != nil {
 				logger.Error("Failed to push inbox message to Redis",
-					zap.Int64("user_id", inboxPayload.UserID),
+					zap.Int64("user_id", userID),
 					zap.Error(err))
 			} else {
 				logger.Info("Inbox message processed",
-					zap.Int64("user_id", inboxPayload.UserID),
+					zap.Int64("user_id", userID),
 					zap.String("type", inboxPayload.Msg.Type))
 			}
 		}

@@ -3,6 +3,7 @@ package utils
 import (
 	"errors"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -25,7 +26,7 @@ type TokenPair struct {
 }
 
 type Claims struct {
-	UserID int64  `json:"user_id"`
+	UserID string `json:"user_id"`
 	Email  string `json:"email"`
 	Type   string `json:"type"`
 	jwt.RegisteredClaims
@@ -51,7 +52,7 @@ func GenerateTokenPair(userID int64, email string) (*TokenPair, error) {
 
 func generateAccessToken(userID int64, email string) (string, error) {
 	claims := Claims{
-		UserID: userID,
+		UserID: strconv.FormatInt(userID, 10),
 		Email:  email,
 		Type:   "access",
 		RegisteredClaims: jwt.RegisteredClaims{
@@ -67,7 +68,7 @@ func generateAccessToken(userID int64, email string) (string, error) {
 
 func generateRefreshToken(userID int64, email string) (string, error) {
 	claims := Claims{
-		UserID: userID,
+		UserID: strconv.FormatInt(userID, 10),
 		Email:  email,
 		Type:   "refresh",
 		RegisteredClaims: jwt.RegisteredClaims{
@@ -110,5 +111,11 @@ func RefreshAccessToken(refreshToken string) (string, error) {
 		return "", errors.New("invalid token type")
 	}
 
-	return generateAccessToken(claims.UserID, claims.Email)
+	// 将字符串用户ID转换为int64
+	userID, err := strconv.ParseInt(claims.UserID, 10, 64)
+	if err != nil {
+		return "", err
+	}
+
+	return generateAccessToken(userID, claims.Email)
 }

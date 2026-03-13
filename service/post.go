@@ -709,9 +709,9 @@ func (s *PostService) CreateComment(userID int64, req CreateCommentRequest) (*mo
 		if err := database.DB.First(&parentComment, comment.CommentID).Error; err == nil {
 			if parentComment.UserID != userID {
 				msg := database.InboxMessage{
-					PostID:    int64(*comment.PostID),
-					CommentID: comment.ID,
-					SenderID:  userID,
+					PostID:    strconv.FormatInt(int64(*comment.PostID), 10),
+					CommentID: strconv.FormatUint(uint64(comment.ID), 10),
+					SenderID:  strconv.FormatInt(userID, 10),
 					Type:      "reply_comment",
 				}
 				if err := database.ProduceInboxMessage(parentComment.UserID, msg); err != nil {
@@ -726,8 +726,8 @@ func (s *PostService) CreateComment(userID int64, req CreateCommentRequest) (*mo
 		if err := database.DB.First(&post, postID).Error; err == nil {
 			if post.UserID != userID {
 				msg := database.InboxMessage{
-					PostID:   postID,
-					SenderID: userID,
+					PostID:   strconv.FormatInt(postID, 10),
+					SenderID: strconv.FormatInt(userID, 10),
 					Type:     "reply_post",
 				}
 				if err := database.ProduceInboxMessage(post.UserID, msg); err != nil {

@@ -6,6 +6,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/segmentio/kafka-go"
@@ -117,7 +119,9 @@ func ConsumeMessage() (*KafkaMessage, error) {
 
 	msg, err := KafkaReader.ReadMessage(ctx)
 	if err != nil {
-		if err == context.DeadlineExceeded {
+		// 检查错误是否是超时相关的错误
+		errorStr := err.Error()
+		if err == context.DeadlineExceeded || strings.Contains(strings.ToLower(errorStr), "deadline exceeded") {
 			return nil, nil
 		}
 		logger.Error("Failed to consume kafka message", zap.Error(err))
@@ -134,7 +138,7 @@ func ConsumeMessage() (*KafkaMessage, error) {
 }
 
 type InboxKafkaPayload struct {
-	UserID int64        `json:"user_id"`
+	UserID string       `json:"user_id"`
 	Msg    InboxMessage `json:"msg"`
 }
 
@@ -145,7 +149,7 @@ func ProduceInboxMessage(userID int64, msg InboxMessage) error {
 
 	msg.Time = time.Now().Unix()
 	payload := InboxKafkaPayload{
-		UserID: userID,
+		UserID: strconv.FormatInt(userID, 10),
 		Msg:    msg,
 	}
 
