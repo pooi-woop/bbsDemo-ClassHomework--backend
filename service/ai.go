@@ -350,7 +350,7 @@ func (s *AIService) streamOpenAICompatibleAPI(prompt string, ch chan string) err
 		zap.Int("status_code", resp.StatusCode),
 		zap.String("status", resp.Status))
 
-	// 简单的流式处理
+	// 正确解析OpenAI兼容的流式响应
 	reader := resp.Body
 	buffer := make([]byte, 1024)
 	totalBytes := 0
@@ -371,11 +371,50 @@ func (s *AIService) streamOpenAICompatibleAPI(prompt string, ch chan string) err
 			return err
 		}
 
-		// 简单处理流式输出
+		// 处理流式输出
 		if n > 0 {
-			ch <- string(buffer[:n])
-			totalBytes += n
-			chunkCount++
+			// 解析SSE格式的响应
+			responseChunk := string(buffer[:n])
+			lines := strings.Split(responseChunk, "\n")
+
+			for _, line := range lines {
+				line = strings.TrimSpace(line)
+				if strings.HasPrefix(line, "data:") {
+					dataPart := strings.TrimPrefix(line, "data:")
+					dataPart = strings.TrimSpace(dataPart)
+
+					// 检查是否结束
+					if dataPart == "[DONE]" {
+						logger.Info("Received streaming done signal")
+						break
+					}
+
+					// 解析JSON数据
+					var chunkResponse struct {
+						Choices []struct {
+							Delta struct {
+								Content string `json:"content"`
+							} `json:"delta"`
+						} `json:"choices"`
+					}
+
+					if err := json.Unmarshal([]byte(dataPart), &chunkResponse); err != nil {
+						logger.Error("Failed to unmarshal streaming chunk", zap.Error(err))
+						continue
+					}
+
+					// 提取内容并发送
+					if len(chunkResponse.Choices) > 0 && chunkResponse.Choices[0].Delta.Content != "" {
+						content := chunkResponse.Choices[0].Delta.Content
+						ch <- content
+						totalBytes += len(content)
+						chunkCount++
+						logger.Debug("Sent streaming content chunk",
+							zap.Int("chunk_index", chunkCount),
+							zap.Int("chunk_length", len(content)))
+					}
+				}
+			}
 		}
 	}
 
