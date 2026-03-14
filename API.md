@@ -1829,27 +1829,47 @@ Content-Type: application/json
 - 响应格式：SSE (Server-Sent Events)
 
 ```
+event: end
+data: 
+
+event: data
 data: 基于论坛内容的回答：
 
+event: data
 data: 
 
+event: data
 data: 相关内容：
 
+event: data
 data: 
 
+event: data
 data: 1. 标题: Elasticsearch使用指南
 内容: Elasticsearch是一个强大的搜索引擎，可用于论坛的内容搜索和分析。
 
+event: data
 data: 
 
+event: data
 data: 问题：如何使用Elasticsearch？
 
+event: data
 data: 
 
+event: data
 data: 这是一个基于论坛内容的智能回答。
 
-data: [DONE]
+event: end
+data: 
 ```
+
+**实现说明：**
+
+- 后端接收DeepSeek API的完整JSON响应
+- 将AI回答内容分割成小块（每块约100字符）流式发送
+- 每个chunk之间有50ms延迟，模拟真实的流式体验
+- 支持实时显示AI回答内容
 
 **错误返回：**
 
@@ -1860,16 +1880,21 @@ data: [DONE]
 
 ### 7.3 AI 接口实现说明
 
-- **技术栈**：使用字节跳动的 Eino 库实现 RAG (Retrieval-Augmented Generation) 模式
+- **技术栈**：使用DeepSeek API实现RAG (Retrieval-Augmented Generation) 模式
 - **数据流**：
   1. 接收用户问题
   2. 从 Elasticsearch 检索相关文档
-  3. 使用 Eino 库的 ChatModelAgent 生成回答
+  3. 调用 DeepSeek API 生成回答
   4. 支持标准 JSON 响应和流式 SSE 响应
+- **流式传输实现**：
+  - 接收DeepSeek API的完整JSON响应
+  - 将AI回答内容分割成小块（每块约100字符）流式发送
+  - 每个chunk之间有50ms延迟，模拟真实的流式体验
+  - 支持实时显示AI回答内容
 - **特点**：
   - 基于论坛真实内容生成回答
   - 支持实时流式输出
-  - 集成字节跳动 Eino 库的能力
+  - 集成DeepSeek AI的能力
 
 ## 8. 拉黑接口
 

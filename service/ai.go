@@ -356,6 +356,9 @@ func (s *AIService) streamOpenAICompatibleAPI(prompt string, ch chan string) err
 	totalBytes := 0
 	chunkCount := 0
 
+	// 用于拼接完整的JSON响应
+	var fullResponse strings.Builder
+
 	logger.Info("Starting to read streaming response")
 
 	for {
@@ -373,49 +376,56 @@ func (s *AIService) streamOpenAICompatibleAPI(prompt string, ch chan string) err
 
 		// 处理流式输出
 		if n > 0 {
-			// 解析SSE格式的响应
+			// 追加到完整响应
 			responseChunk := string(buffer[:n])
-			lines := strings.Split(responseChunk, "\n")
-
-			for _, line := range lines {
-				line = strings.TrimSpace(line)
-				if strings.HasPrefix(line, "data:") {
-					dataPart := strings.TrimPrefix(line, "data:")
-					dataPart = strings.TrimSpace(dataPart)
-
-					// 检查是否结束
-					if dataPart == "[DONE]" {
-						logger.Info("Received streaming done signal")
-						break
-					}
-
-					// 解析JSON数据
-					var chunkResponse struct {
-						Choices []struct {
-							Delta struct {
-								Content string `json:"content"`
-							} `json:"delta"`
-						} `json:"choices"`
-					}
-
-					if err := json.Unmarshal([]byte(dataPart), &chunkResponse); err != nil {
-						logger.Error("Failed to unmarshal streaming chunk", zap.Error(err))
-						continue
-					}
-
-					// 提取内容并发送
-					if len(chunkResponse.Choices) > 0 && chunkResponse.Choices[0].Delta.Content != "" {
-						content := chunkResponse.Choices[0].Delta.Content
-						ch <- content
-						totalBytes += len(content)
-						chunkCount++
-						logger.Debug("Sent streaming content chunk",
-							zap.Int("chunk_index", chunkCount),
-							zap.Int("chunk_length", len(content)))
-					}
-				}
-			}
+			fullResponse.WriteString(responseChunk)
+			logger.Debug("Received raw streaming chunk", zap.String("chunk", responseChunk))
+			totalBytes += n
+			chunkCount++
 		}
+	}
+
+	// 解析完整的JSON响应
+	fullResponseStr := fullResponse.String()
+	logger.Debug("Full response received", zap.Int("length", len(fullResponseStr)))
+
+	// 解析JSON数据
+	var response struct {
+		Choices []struct {
+			Message struct {
+				Content string `json:"content"`
+			} `json:"message"`
+		} `json:"choices"`
+	}
+
+	if err := json.Unmarshal([]byte(fullResponseStr), &response); err != nil {
+		logger.Error("Failed to unmarshal full response", zap.Error(err))
+		return err
+	}
+
+	// 提取内容并模拟流式发送
+	if len(response.Choices) > 0 && response.Choices[0].Message.Content != "" {
+		content := response.Choices[0].Message.Content
+		logger.Debug("Extracted content", zap.Int("length", len(content)))
+
+		// 模拟流式传输，将内容分割成小块发送
+		chunkSize := 100 // 每块大小
+		for i := 0; i < len(content); i += chunkSize {
+			end := i + chunkSize
+			if end > len(content) {
+				end = len(content)
+			}
+			chunk := content[i:end]
+			ch <- chunk
+			logger.Debug("Sent streaming content chunk",
+				zap.Int("chunk_index", i/chunkSize+1),
+				zap.Int("chunk_length", len(chunk)))
+			// 短暂延迟，模拟真实流式体验
+			time.Sleep(50 * time.Millisecond)
+		}
+	} else {
+		logger.Debug("No content in response",
+			zap.Int("choices_count", len(response.Choices)))
 	}
 
 	logger.Info("Streaming response processing completed successfully",
