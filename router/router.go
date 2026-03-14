@@ -31,7 +31,7 @@ func InitRouter(userService *service.UserService, postService *service.PostServi
 	ai := r.Group("/api/ai")
 	{
 		ai.POST("/ask", aiHandler.AskAI)
-		ai.POST("/stream-ask", aiHandler.StreamAskAI)
+		ai.POST("/ask/stream", aiHandler.StreamAskAI)
 	}
 
 	auth := r.Group("/api/auth")
