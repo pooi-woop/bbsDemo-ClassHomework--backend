@@ -38,6 +38,7 @@ type KafkaConfig struct {
 	Brokers []string `mapstructure:"brokers"`
 	Topic   string   `mapstructure:"topic"`
 	GroupID string   `mapstructure:"group_id"`
+	Path    string   `mapstructure:"path"`
 }
 
 type ServerConfig struct {

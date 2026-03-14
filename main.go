@@ -39,6 +39,18 @@ func main() {
 
 	logger.Info("Application starting", zap.String("config", "config.yaml"))
 
+	// 启动elasticsearch
+	elasticsearchCmd, err := database.StartElasticsearch(cfg.Elasticsearch)
+	if err == nil && elasticsearchCmd != nil {
+		defer elasticsearchCmd.Process.Kill()
+	}
+
+	// 启动kafka
+	kafkaCmd, err := database.StartKafka(cfg.Kafka)
+	if err == nil && kafkaCmd != nil {
+		defer kafkaCmd.Process.Kill()
+	}
+
 	utils.InitJWT(cfg.JWT.Secret)
 	utils.InitSnowflake(1)
 
@@ -61,9 +73,10 @@ func main() {
 	}
 
 	if err := database.InitElasticsearch(cfg.Elasticsearch); err != nil {
-		logger.Fatal("Failed to initialize Elasticsearch", zap.Error(err))
+		logger.Warn("Failed to initialize Elasticsearch, continuing anyway", zap.Error(err))
+	} else {
+		defer database.CloseElasticsearch()
 	}
-	defer database.CloseElasticsearch()
 
 	worker := queue.NewWorker(cfg.Email, 3)
 	worker.Start()

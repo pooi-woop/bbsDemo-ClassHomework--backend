@@ -215,7 +215,7 @@ func GetInboxMessages(userID int64, page, pageSize int) ([]InboxMessage, int64, 
 }
 
 func ClearInbox(userID int64) error {
-	inboxKey := fmt.Sprintf("%s%d", InboxKeyPrefix, userID)
+	inboxKey := fmt.Sprintf("%s%s", InboxKeyPrefix, strconv.FormatInt(userID, 10))
 	if err := RedisClient.Del(redisCtx, inboxKey).Err(); err != nil {
 		logger.Error("Failed to clear inbox", zap.Error(err))
 		return err
