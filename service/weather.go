@@ -3,6 +3,7 @@ package service
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"time"
@@ -14,7 +15,8 @@ import (
 
 // WeatherService 天气服务
 type WeatherService struct {
-	httpClient *http.Client
+	httpClient  *http.Client
+	gaodeAPIKey string
 }
 
 // WeatherInfo 天气信息
@@ -58,7 +60,7 @@ type OpenMeteoResponse struct {
 }
 
 // NewWeatherService 创建天气服务
-func NewWeatherService() *WeatherService {
+func NewWeatherService(gaodeAPIKey string) *WeatherService {
 	return &WeatherService{
 		httpClient: &http.Client{
 			Timeout: 15 * time.Second,
@@ -68,6 +70,7 @@ func NewWeatherService() *WeatherService {
 				IdleConnTimeout:     30 * time.Second,
 			},
 		},
+		gaodeAPIKey: gaodeAPIKey,
 	}
 }
 
@@ -77,6 +80,12 @@ func (s *WeatherService) GetWeatherByIP(ip string) (*WeatherInfo, error) {
 
 	// 记录请求的IP
 	log.Info("Getting weather for IP", zap.String("ip", ip))
+
+	// 处理本地回环地址
+	if ip == "127.0.0.1" || ip == "::1" {
+		log.Info("Local loopback IP detected, returning default weather info")
+		return s.getDefaultWeatherInfo(ip), nil
+	}
 
 	// 使用国内的IP地理位置API
 	ipInfo, err := s.getIPLocationCN(ip)
@@ -92,18 +101,12 @@ func (s *WeatherService) GetWeatherByIP(ip string) (*WeatherInfo, error) {
 		zap.Float64("lat", ipInfo.Latitude),
 		zap.Float64("lon", ipInfo.Longitude))
 
-	// 直接构造天气信息（模拟数据）
-	// 实际使用时可以调用国内的天气API，如高德地图天气API
-	weatherInfo := &WeatherInfo{
-		IP:          ip,
-		City:        ipInfo.City,
-		Country:     ipInfo.Country,
-		Temperature: 20.5,
-		FeelsLike:   21.0,
-		Humidity:    50,
-		Weather:     "晴",
-		WindSpeed:   10.5,
-		UpdatedAt:   time.Now().Format("2006-01-02 15:04:05"),
+	// 使用高德地图天气API获取天气数据
+	weatherInfo, err := s.getWeatherFromGaode(ip, ipInfo)
+	if err != nil {
+		log.Error("Failed to get weather from Gaode", zap.Error(err))
+		// 失败时返回默认的北京天气数据
+		return s.getDefaultWeatherInfo(ip), nil
 	}
 
 	log.Info("Weather info retrieved successfully",
@@ -130,36 +133,133 @@ func (s *WeatherService) getDefaultWeatherInfo(ip string) *WeatherInfo {
 
 // getIPLocationCN 使用国内API获取IP地理位置
 func (s *WeatherService) getIPLocationCN(ip string) (*IPInfo, error) {
-	// 使用 ip-api.com 国内节点
-	url := fmt.Sprintf("http://ip-api.com/json/%s?lang=zh-CN", ip)
+	// 检查API key是否设置
+	if s.gaodeAPIKey == "" {
+		return nil, fmt.Errorf("Gaode API key is not set")
+	}
+
+	// 使用高德地图IP定位API
+	url := fmt.Sprintf("https://restapi.amap.com/v3/ip?key=%s&ip=%s", s.gaodeAPIKey, ip)
 	resp, err := s.httpClient.Get(url)
 	if err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close()
 
-	var result struct {
-		Status  string  `json:"status"`
-		Country string  `json:"country"`
-		City    string  `json:"city"`
-		Lat     float64 `json:"lat"`
-		Lon     float64 `json:"lon"`
-	}
-
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+	// 读取完整的响应体
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
 		return nil, err
 	}
 
-	if result.Status != "success" {
-		return nil, fmt.Errorf("failed to get IP location: %s", result.Status)
+	// 解析高德地图IP定位API响应
+	var result struct {
+		Status   string  `json:"status"`
+		Info     string  `json:"info"`
+		Province string  `json:"province"`
+		City     string  `json:"city"`
+		District string  `json:"district"`
+		Lat      float64 `json:"lat"`
+		Lon      float64 `json:"lon"`
+	}
+
+	if err := json.Unmarshal(body, &result); err != nil {
+		return nil, err
+	}
+
+	if result.Status != "1" {
+		return nil, fmt.Errorf("failed to get IP location from Gaode: %s", result.Info)
+	}
+
+	// 即使经纬度为 0, 0，只要有城市信息就返回
+	if result.City == "" {
+		return nil, fmt.Errorf("no city information returned from Gaode")
 	}
 
 	return &IPInfo{
 		City:      result.City,
-		Country:   result.Country,
+		Country:   "中国",
 		Latitude:  result.Lat,
 		Longitude: result.Lon,
 	}, nil
+}
+
+// getWeatherFromGaode 使用高德地图天气API获取天气数据
+func (s *WeatherService) getWeatherFromGaode(ip string, ipInfo *IPInfo) (*WeatherInfo, error) {
+	// 检查API key是否设置
+	if s.gaodeAPIKey == "" {
+		return nil, fmt.Errorf("Gaode API key is not set")
+	}
+
+	// 构建高德地图天气API URL，直接使用城市名
+	weatherUrl := fmt.Sprintf("https://restapi.amap.com/v3/weather/weatherInfo?key=%s&city=%s&extensions=base&output=json",
+		s.gaodeAPIKey, ipInfo.City)
+
+	weatherResp, err := s.httpClient.Get(weatherUrl)
+	if err != nil {
+		return nil, err
+	}
+	defer weatherResp.Body.Close()
+
+	// 读取完整的响应体
+	body, err := io.ReadAll(weatherResp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	// 解析高德地图API响应
+	var weatherResult struct {
+		Status string `json:"status"`
+		Info   string `json:"info"`
+		Lives  []struct {
+			City        string `json:"city"`
+			Weather     string `json:"weather"`
+			Temperature string `json:"temperature"`
+			WindPower   string `json:"windpower"`
+			Humidity    string `json:"humidity"`
+		} `json:"lives"`
+	}
+
+	if err := json.Unmarshal(body, &weatherResult); err != nil {
+		return nil, err
+	}
+
+	if weatherResult.Status != "1" {
+		return nil, fmt.Errorf("failed to get weather from Gaode: %s", weatherResult.Info)
+	}
+
+	if len(weatherResult.Lives) == 0 {
+		return nil, fmt.Errorf("no weather data returned from Gaode")
+	}
+
+	forecast := weatherResult.Lives[0]
+
+	// 解析温度（高德返回的是范围，如"10-20"）
+	var temperature float64
+	fmt.Sscanf(forecast.Temperature, "%f", &temperature)
+
+	// 解析风速
+	var windSpeed float64
+	fmt.Sscanf(forecast.WindPower, "%f", &windSpeed)
+
+	// 解析湿度
+	var humidity int
+	fmt.Sscanf(forecast.Humidity, "%d", &humidity)
+
+	// 构造天气信息
+	weatherInfo := &WeatherInfo{
+		IP:          ip,
+		City:        ipInfo.City,
+		Country:     ipInfo.Country,
+		Temperature: temperature,
+		FeelsLike:   temperature, // 高德API没有直接返回体感温度
+		Humidity:    humidity,
+		Weather:     forecast.Weather,
+		WindSpeed:   windSpeed,
+		UpdatedAt:   time.Now().Format("2006-01-02 15:04:05"),
+	}
+
+	return weatherInfo, nil
 }
 
 // getPublicIP 获取公网IP

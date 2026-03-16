@@ -17,6 +17,7 @@ type Config struct {
 	Email         EmailConfig         `mapstructure:"email"`
 	Upload        UploadConfig        `mapstructure:"upload"`
 	AI            AIConfig            `mapstructure:"ai"`
+	Weather       WeatherConfig       `mapstructure:"weather"`
 }
 
 type MySQLConfig struct {
@@ -89,6 +90,10 @@ type AIConfig struct {
 	Temperature float64 `mapstructure:"temperature"`
 }
 
+type WeatherConfig struct {
+	GaodeAPIKey string `mapstructure:"gaode_api_key"`
+}
+
 func LoadConfig(configPath string) (*Config, error) {
 	viper.SetConfigFile(configPath)
 	viper.SetConfigType("yaml")
@@ -108,6 +113,7 @@ func LoadConfig(configPath string) (*Config, error) {
 	viper.SetDefault("ai.timeout", 30)
 	viper.SetDefault("ai.max_tokens", 1000)
 	viper.SetDefault("ai.temperature", 0.7)
+	viper.SetDefault("weather.gaode_api_key", "")
 
 	if err := viper.ReadInConfig(); err != nil {
 		return nil, fmt.Errorf("failed to read config file: %w", err)

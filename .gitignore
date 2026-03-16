@@ -2,3 +2,6 @@ config.yaml
 logs/
 uploads/
 ./config.yaml
+*.exe
+*.exe~
+*.go~

@@ -16,7 +16,7 @@ func InitRouter(userService *service.UserService, postService *service.PostServi
 	postHandler := handler.NewPostHandler(postService)
 	aiService := service.NewAIService()
 	aiHandler := handler.NewAIHandler(aiService)
-	weatherService := service.NewWeatherService()
+	weatherService := service.NewWeatherService(cfg.Weather.GaodeAPIKey)
 	weatherHandler := handler.NewWeatherHandler(weatherService)
 
 	r.GET("/ping", func(c *gin.Context) {
