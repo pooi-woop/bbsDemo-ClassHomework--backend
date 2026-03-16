@@ -1896,7 +1896,119 @@ data:
   - 支持实时流式输出
   - 集成DeepSeek AI的能力
 
-## 8. 拉黑接口
+## 8. 天气接口
+
+### 8.1 获取当前天气信息
+
+**请求：**
+
+```http
+GET /api/weather
+```
+
+**响应：**
+
+```json
+{
+  "ip": "123.45.67.89",
+  "city": "Beijing",
+  "country": "China",
+  "temperature": 22.5,
+  "feels_like": 21.8,
+  "humidity": 45,
+  "weather": "晴朗",
+  "wind_speed": 12.3,
+  "updated_at": "2026-03-14 15:30:00"
+}
+```
+
+**字段说明：**
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `ip` | string | 客户端IP地址 |
+| `city` | string | 城市名称 |
+| `country` | string | 国家名称 |
+| `temperature` | float64 | 当前温度（摄氏度） |
+| `feels_like` | float64 | 体感温度（摄氏度） |
+| `humidity` | int | 湿度百分比 |
+| `weather` | string | 天气状况描述 |
+| `wind_speed` | float64 | 风速（km/h） |
+| `updated_at` | string | 数据更新时间 |
+
+**错误返回：**
+
+| 状态码 | 错误信息 | 说明 |
+|--------|---------|------|
+| 500 | `{"error": "Failed to get weather information"}` | 获取天气信息失败 |
+
+**测试用例：**
+
+1. 正常获取：`GET /api/weather`
+2. 本地环境测试：自动获取公网IP并查询天气
+
+### 8.2 根据IP获取天气信息
+
+**请求：**
+
+```http
+GET /api/weather/by-ip?ip=123.45.67.89
+```
+
+**参数：**
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| `ip` | string | 是 | IP地址 |
+
+**响应：**
+
+```json
+{
+  "ip": "123.45.67.89",
+  "city": "Shanghai",
+  "country": "China",
+  "temperature": 25.0,
+  "feels_like": 26.2,
+  "humidity": 60,
+  "weather": "多云",
+  "wind_speed": 8.5,
+  "updated_at": "2026-03-14 15:30:00"
+}
+```
+
+**错误返回：**
+
+| 状态码 | 错误信息 | 说明 |
+|--------|---------|------|
+| 400 | `{"error": "IP address is required"}` | IP参数缺失 |
+| 500 | `{"error": "Failed to get weather information"}` | 获取天气信息失败 |
+
+**测试用例：**
+
+1. 正常获取：`GET /api/weather/by-ip?ip=8.8.8.8`
+2. 参数缺失：`GET /api/weather/by-ip`
+3. 无效IP：`GET /api/weather/by-ip?ip=invalid`
+
+### 8.3 天气接口实现说明
+
+- **技术栈**：
+  - 使用 ipapi.co 获取IP地理位置信息
+  - 使用 Open-Meteo API 获取天气数据（免费、无需API Key）
+- **数据流**：
+  1. 获取客户端IP地址
+  2. 通过IP获取地理位置（经纬度、城市、国家）
+  3. 调用 Open-Meteo API 获取天气数据
+  4. 解析并返回格式化的天气信息
+- **特点**：
+  - 自动识别用户IP位置
+  - 支持指定IP查询
+  - 提供温度、湿度、风速等详细天气信息
+  - 包含体感温度
+  - 天气状况中文描述
+  - 数据实时更新
+
+## 9. 拉黑接口
 
 ### 8.1 拉黑用户
 

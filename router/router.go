@@ -16,6 +16,8 @@ func InitRouter(userService *service.UserService, postService *service.PostServi
 	postHandler := handler.NewPostHandler(postService)
 	aiService := service.NewAIService()
 	aiHandler := handler.NewAIHandler(aiService)
+	weatherService := service.NewWeatherService()
+	weatherHandler := handler.NewWeatherHandler(weatherService)
 
 	r.GET("/ping", func(c *gin.Context) {
 		c.JSON(200, gin.H{"message": "pong"})
@@ -32,6 +34,13 @@ func InitRouter(userService *service.UserService, postService *service.PostServi
 	{
 		ai.POST("/ask", aiHandler.AskAI)
 		ai.POST("/ask/stream", aiHandler.StreamAskAI)
+	}
+
+	// 天气路由
+	weather := r.Group("/api/weather")
+	{
+		weather.GET("", weatherHandler.GetWeather)
+		weather.GET("/by-ip", weatherHandler.GetWeatherByIP)
 	}
 
 	auth := r.Group("/api/auth")
