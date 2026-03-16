@@ -75,11 +75,47 @@ func NewWeatherService() *WeatherService {
 func (s *WeatherService) GetWeatherByIP(ip string) (*WeatherInfo, error) {
 	log := logger.Log
 
-	// 直接返回默认天气数据，避免网络请求
-	log.Info("Returning default weather data", zap.String("ip", ip))
+	// 记录请求的IP
+	log.Info("Getting weather for IP", zap.String("ip", ip))
 
-	// 返回默认的北京天气数据
+	// 使用国内的IP地理位置API
+	ipInfo, err := s.getIPLocationCN(ip)
+	if err != nil {
+		log.Error("Failed to get IP location", zap.Error(err), zap.String("ip", ip))
+		// 失败时返回默认的北京天气数据
+		return s.getDefaultWeatherInfo(ip), nil
+	}
+
+	log.Info("Got IP location",
+		zap.String("city", ipInfo.City),
+		zap.String("country", ipInfo.Country),
+		zap.Float64("lat", ipInfo.Latitude),
+		zap.Float64("lon", ipInfo.Longitude))
+
+	// 直接构造天气信息（模拟数据）
+	// 实际使用时可以调用国内的天气API，如高德地图天气API
 	weatherInfo := &WeatherInfo{
+		IP:          ip,
+		City:        ipInfo.City,
+		Country:     ipInfo.Country,
+		Temperature: 20.5,
+		FeelsLike:   21.0,
+		Humidity:    50,
+		Weather:     "晴",
+		WindSpeed:   10.5,
+		UpdatedAt:   time.Now().Format("2006-01-02 15:04:05"),
+	}
+
+	log.Info("Weather info retrieved successfully",
+		zap.String("city", weatherInfo.City),
+		zap.Float64("temperature", weatherInfo.Temperature))
+
+	return weatherInfo, nil
+}
+
+// getDefaultWeatherInfo 获取默认天气信息
+func (s *WeatherService) getDefaultWeatherInfo(ip string) *WeatherInfo {
+	return &WeatherInfo{
 		IP:          ip,
 		City:        "北京",
 		Country:     "中国",
@@ -90,12 +126,40 @@ func (s *WeatherService) GetWeatherByIP(ip string) (*WeatherInfo, error) {
 		WindSpeed:   12.3,
 		UpdatedAt:   time.Now().Format("2006-01-02 15:04:05"),
 	}
+}
 
-	log.Info("Weather info retrieved successfully (default data)",
-		zap.String("city", weatherInfo.City),
-		zap.Float64("temperature", weatherInfo.Temperature))
+// getIPLocationCN 使用国内API获取IP地理位置
+func (s *WeatherService) getIPLocationCN(ip string) (*IPInfo, error) {
+	// 使用 ip-api.com 国内节点
+	url := fmt.Sprintf("http://ip-api.com/json/%s?lang=zh-CN", ip)
+	resp, err := s.httpClient.Get(url)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
 
-	return weatherInfo, nil
+	var result struct {
+		Status  string  `json:"status"`
+		Country string  `json:"country"`
+		City    string  `json:"city"`
+		Lat     float64 `json:"lat"`
+		Lon     float64 `json:"lon"`
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, err
+	}
+
+	if result.Status != "success" {
+		return nil, fmt.Errorf("failed to get IP location: %s", result.Status)
+	}
+
+	return &IPInfo{
+		City:      result.City,
+		Country:   result.Country,
+		Latitude:  result.Lat,
+		Longitude: result.Lon,
+	}, nil
 }
 
 // getPublicIP 获取公网IP
