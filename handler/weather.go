@@ -47,22 +47,19 @@ func (h *WeatherHandler) GetWeather(c *gin.Context) {
 
 // GetWeatherByIP 根据指定IP获取天气信息
 // @Summary 根据IP获取天气信息
-// @Description 根据指定的IP地址获取该位置的天气信息
+// @Description 根据指定的IP地址或客户端IP获取该位置的天气信息
 // @Tags 天气
 // @Accept json
 // @Produce json
-// @Param ip query string true "IP地址"
+// @Param ip query string false "IP地址（可选，不传则使用客户端IP）"
 // @Success 200 {object} service.WeatherInfo "天气信息"
-// @Failure 400 {object} map[string]string "IP参数错误"
 // @Failure 500 {object} map[string]string "获取天气失败"
 // @Router /api/weather/by-ip [get]
 func (h *WeatherHandler) GetWeatherByIP(c *gin.Context) {
+	// 优先从query参数获取IP，如果没有则从请求头中解析客户端IP
 	ip := c.Query("ip")
 	if ip == "" {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "IP address is required",
-		})
-		return
+		ip = c.ClientIP()
 	}
 
 	// 获取天气信息

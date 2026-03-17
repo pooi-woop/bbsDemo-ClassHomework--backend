@@ -81,7 +81,7 @@ func (s *WeatherService) GetWeatherByIP(ip string) (*WeatherInfo, error) {
 	// 记录请求的IP
 	log.Info("Getting weather for IP", zap.String("ip", ip))
 
-	// 处理本地回环地址
+	// 处理本地回环地址，返回默认的北京天气数据
 	if ip == "127.0.0.1" || ip == "::1" {
 		log.Info("Local loopback IP detected, returning default weather info")
 		return s.getDefaultWeatherInfo(ip), nil
@@ -91,8 +91,8 @@ func (s *WeatherService) GetWeatherByIP(ip string) (*WeatherInfo, error) {
 	ipInfo, err := s.getIPLocationCN(ip)
 	if err != nil {
 		log.Error("Failed to get IP location", zap.Error(err), zap.String("ip", ip))
-		// 失败时返回默认的北京天气数据
-		return s.getDefaultWeatherInfo(ip), nil
+		// IP定位失败时返回错误，而不是默认数据
+		return nil, fmt.Errorf("failed to get location for IP %s: %w", ip, err)
 	}
 
 	log.Info("Got IP location",
@@ -105,8 +105,8 @@ func (s *WeatherService) GetWeatherByIP(ip string) (*WeatherInfo, error) {
 	weatherInfo, err := s.getWeatherFromGaode(ip, ipInfo)
 	if err != nil {
 		log.Error("Failed to get weather from Gaode", zap.Error(err))
-		// 失败时返回默认的北京天气数据
-		return s.getDefaultWeatherInfo(ip), nil
+		// 天气获取失败时返回错误，而不是默认数据
+		return nil, fmt.Errorf("failed to get weather for city %s: %w", ipInfo.City, err)
 	}
 
 	log.Info("Weather info retrieved successfully",
