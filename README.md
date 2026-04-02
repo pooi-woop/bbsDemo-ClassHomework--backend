@@ -2,7 +2,7 @@
 
 ## 项目概述
 
-基于 Go 语言开发的 EyuForum（恶雨论坛）系统，具有完整的用户认证、帖子管理、评论系统、点赞功能、收藏功能和消息队列等特性。系统采用分层架构设计，使用 MySQL 作为主数据库，Redis 作为消息队列，支持高并发场景。
+基于 Go 语言开发的 EyuForum（恶雨论坛）系统，具有完整的用户认证、帖子管理、评论系统、点赞功能、收藏功能、消息队列等特性。系统采用分层架构设计，使用 MySQL 作为主数据库，Redis 作为消息队列，Kafka 作为消息中间件，支持高并发场景。
 
 ## 技术栈
 
@@ -12,11 +12,17 @@
 | Gin | v1.9.0 | Web 框架 |
 | GORM | v1.25.0 | ORM 框架 |
 | MySQL | 8.0+ | 主数据库 |
-| Redis | 7.0+ | 消息队列 |
+| Redis | 7.0+ | 缓存和消息队列 |
+| Kafka | 4.0+ | 消息中间件 |
+| Elasticsearch | 9.0+ | 搜索和AI知识库 |
 | JWT | - | 认证令牌 |
 | Zap | v1.24.0 | 日志库 |
 | Viper | v1.15.0 | 配置管理 |
-| 雪花算法 | - | 生成唯一用户 ID |
+| Snowflake | - | 生成唯一ID |
+| Eino | - | RAG流程实现 |
+| Vue3 | - | 前端框架 |
+| Element Plus | - | 前端组件库 |
+| GitHub Actions | - | CI/CD |
 
 ## 项目结构
 
@@ -26,10 +32,13 @@ bbsDemo/
 │   └── config.go      # 配置结构和加载
 ├── database/          # 数据库相关
 │   ├── mysql.go       # MySQL 连接和迁移
-│   └── redis.go       # Redis 连接和消息队列
+│   ├── redis.go       # Redis 连接和消息队列
+│   ├── kafka.go       # Kafka 连接和消息处理
+│   └── elasticsearch.go # Elasticsearch 连接和索引
 ├── handler/           # HTTP 处理器
 │   ├── auth.go        # 认证相关接口
-│   └── post.go        # 帖子相关接口
+│   ├── post.go        # 帖子相关接口
+│   └── weather.go     # 天气相关接口
 ├── logger/            # 日志管理
 │   └── logger.go      # Zap 日志初始化
 ├── middleware/        # 中间件
@@ -44,7 +53,9 @@ bbsDemo/
 │   └── router.go      # 路由注册
 ├── service/           # 业务逻辑
 │   ├── user.go        # 用户业务逻辑
-│   └── post.go        # 帖子业务逻辑
+│   ├── post.go        # 帖子业务逻辑
+│   ├── weather.go     # 天气业务逻辑
+│   └── ai.go          # AI业务逻辑
 ├── utils/             # 工具函数
 │   ├── jwt.go         # JWT 工具
 │   ├── hash.go        # 密码哈希工具
@@ -71,6 +82,7 @@ bbsDemo/
 - 密码采用 bcrypt 加盐哈希存储
 - 邮箱验证码通过 Redis 消息队列异步发送
 - 支持令牌刷新机制
+- Refresh Token 存储在 Redis 中，提高安全性
 
 **关键文件：**
 - `utils/jwt.go` - JWT 令牌生成和解析
@@ -82,7 +94,7 @@ bbsDemo/
 
 **实现方式：**
 - **验证码生成**：使用随机数字生成 6 位验证码
-- **存储机制**：将验证码存储在内存中，使用 `map` 结构存储，键格式为 `email:type`
+- **存储机制**：将验证码存储在 Redis 中，使用 `map` 结构存储，键格式为 `email:type`
 - **过期时间**：验证码默认 10 分钟过期
 - **防重复发送**：同一邮箱在短时间内只能发送一次验证码
 - **异步发送**：通过 Redis 消息队列异步发送邮件，避免阻塞主流程
@@ -92,11 +104,11 @@ bbsDemo/
 **流程说明：**
 1. 用户请求发送验证码，指定邮箱和验证码类型（注册/重置密码）
 2. 系统生成 6 位随机验证码
-3. 验证码存储到内存，设置 10 分钟过期时间
+3. 验证码存储到 Redis，设置 10 分钟过期时间
 4. 将邮件发送任务推送到 Redis 消息队列
 5. 消息队列消费者（Worker）异步发送邮件
 6. 用户收到邮件后，使用验证码进行注册或重置密码
-7. 系统从内存中验证验证码，标记为已使用
+7. 系统从 Redis 中验证验证码，标记为已使用
 8. 过期或已使用的验证码会被定时清理
 
 **关键文件：**
@@ -105,7 +117,7 @@ bbsDemo/
 - `queue/worker.go` - 邮件发送消费者
 
 **安全性措施：**
-- 验证码存储在内存中，系统重启后会自动清除
+- 验证码存储在 Redis 中，系统重启后会自动清除
 - 每次发送验证码时检查是否有未使用且未过期的验证码
 - 验证码使用后立即标记为已使用
 - 邮箱发送失败时记录日志，不影响用户体验
@@ -118,11 +130,13 @@ bbsDemo/
 - 浏览量通过 Redis 消息队列异步更新
 - 支持分页查询
 - 支持按标题和内容关键词搜索帖子
+- 帖子内容同步到 Elasticsearch，支持全文搜索
 
 **关键文件：**
 - `models/post.go` - 帖子数据模型
 - `service/post.go` - 帖子业务逻辑
 - `handler/post.go` - 帖子接口
+- `database/elasticsearch.go` - 帖子索引同步
 
 ### 4. 评论系统
 
@@ -130,11 +144,13 @@ bbsDemo/
 - 支持评论和嵌套回复（楼中楼）
 - 评论按时间倒序排列
 - 支持分页查询
+- 评论内容同步到 Elasticsearch，支持搜索
 
 **关键文件：**
 - `models/post.go` - 评论数据模型
 - `service/post.go` - 评论业务逻辑
 - `handler/post.go` - 评论接口
+- `database/elasticsearch.go` - 评论索引同步
 
 ### 5. 点赞系统
 
@@ -219,6 +235,78 @@ bbsDemo/
 - 管理员可以禁言/解禁任意用户
 - 被禁言用户（status=0）无法登录系统
 
+### 11. Kafka 消息中间件
+
+**实现方式：**
+- 使用 Kafka 作为消息中间件，提高消息处理速度
+- 支持高并发场景
+- 与 Redis 配合使用，实现消息的可靠传递
+
+**关键文件：**
+- `database/kafka.go` - Kafka 连接和消息处理
+- `queue/worker.go` - Kafka 消息消费者
+
+### 12. Elasticsearch 搜索和 AI 知识库
+
+**实现方式：**
+- 帖子和评论内容同步到 Elasticsearch
+- 支持全文搜索功能
+- 通过 Eino 库实现 RAG 流程，支持 AI 问答功能
+
+**关键文件：**
+- `database/elasticsearch.go` - Elasticsearch 连接和索引
+- `service/ai.go` - AI 业务逻辑
+- `handler/ai.go` - AI 接口
+
+### 13. 天气预报功能
+
+**实现方式：**
+- 使用高德地图 API 实现天气预报功能
+- 支持根据 IP 地址自动获取地理位置
+- 支持指定 IP 查询天气
+
+**关键文件：**
+- `service/weather.go` - 天气业务逻辑
+- `handler/weather.go` - 天气接口
+
+### 14. CI/CD 持续集成
+
+**实现方式：**
+- 通过 GitHub Actions 实现 CI/CD
+- 自动构建、测试和部署
+
+**关键文件：**
+- `.github/workflows/deploy.yml` - CI/CD 配置
+
+### 15. 前端实现
+
+**实现方式：**
+- 使用 Vue3 框架和 Element Plus 组件库实现前端页面
+- 支持响应式设计
+- 与后端 API 无缝集成
+
+**关键功能：**
+- 登录/注册页面
+- 帖子列表和详情页面
+- 评论和回复功能
+- 个人中心（资料、收藏、拉黑）
+- 天气信息展示
+
+### 16. 安全性措施
+
+**实现方式：**
+- 密码采用加盐哈希方式存储
+- 前后端 ID 通过 string 类型传输，防止 JSON 精度丢失
+- 使用 Snowflake 算法生成唯一 ID，提高安全性
+- JWT 令牌过期机制
+- 验证码防重复发送
+- 邮箱验证码存储在 Redis 中
+
+**关键文件：**
+- `utils/hash.go` - 密码哈希工具
+- `utils/snowflake.go` - 雪花算法 ID 生成
+- `utils/jwt.go` - JWT 工具
+
 ## 配置说明
 
 ### 配置文件（config.yaml）
@@ -237,6 +325,16 @@ redis:
   password: ""
   db: 0
 
+kafka:
+  brokers: ["localhost:9092"]
+  topic: bbs_demo
+  group_id: bbs_demo_group
+
+elasticsearch:
+  host: localhost
+  port: 9200
+  index: eyuforum
+
 server:
   port: 8080
 
@@ -252,16 +350,27 @@ jwt:
   secret: your_jwt_secret_key
 
 email:
-  host: smtp.example.com
+  host: smtp.qq.com
   port: 587
-  username: your_email@example.com
-  password: your_email_password
-  from: your_email@example.com
+  username: your_qq_email@qq.com
+  password: your_qq_email_password
+  from: your_qq_email@qq.com
 
 upload:
   path: ./uploads
   max_size: 5242880  # 5MB
   allowed_ext: .jpg,.jpeg,.png,.gif,.webp
+
+weather:
+  gaode_api_key: your_gaode_api_key
+
+ai:
+  model: deepseek-chat
+  api_base: https://api.deepseek.com
+  api_key: your_ai_api_key
+  timeout: 300
+  max_tokens: 1000
+  temperature: 0.7
 ```
 
 ## 部署指南
@@ -271,6 +380,8 @@ upload:
 - Go 1.20+
 - MySQL 8.0+
 - Redis 7.0+
+- Kafka 4.0+
+- Elasticsearch 9.0+
 
 ### 2. 数据库配置
 
@@ -281,7 +392,7 @@ upload:
 
 2. 配置 config.yaml 文件中的数据库连接信息
 
-### 3. 启动服务
+### 3. 服务启动
 
 ```bash
 # 安装依赖
@@ -310,6 +421,25 @@ shutdown
 ### 5. 自动迁移
 
 服务启动时会自动执行数据库迁移，创建所需的表结构。
+
+### 6. 外部服务配置
+
+#### 6.1 Kafka 配置
+- 启动 Kafka 服务
+- 创建主题 `bbs_demo`
+
+#### 6.2 Elasticsearch 配置
+- 启动 Elasticsearch 服务
+- 服务启动时会自动创建索引 `eyuforum`
+
+#### 6.3 高德地图 API 配置
+- 注册高德地图开发者账号
+- 获取 API Key
+- 在 config.yaml 中配置 `weather.gaode_api_key`
+
+#### 6.4 AI 服务配置
+- 获取 DeepSeek API Key
+- 在 config.yaml 中配置 `ai.api_key`
 
 ## 项目使用
 
@@ -502,6 +632,36 @@ shutdown
      -d '{"bio": "This is my bio"}'
    ```
 
+#### 1.7 天气接口
+
+1. **获取当前天气**（自动识别IP）：
+   ```bash
+   curl http://localhost:8080/api/weather
+   ```
+
+2. **根据IP获取天气**：
+   ```bash
+   curl "http://localhost:8080/api/weather/by-ip?ip=202.106.0.20"
+   ```
+
+#### 1.8 AI 接口
+
+1. **AI 问答**：
+   ```bash
+   curl -X POST http://localhost:8080/api/ai/ask \
+     -H "Content-Type: application/json" \
+     -H "Authorization: Bearer your_access_token" \
+     -d '{"question": "如何使用这个论坛系统？"}'
+   ```
+
+2. **AI 问答（流式）**：
+   ```bash
+   curl -X POST http://localhost:8080/api/ai/ask/stream \
+     -H "Content-Type: application/json" \
+     -H "Authorization: Bearer your_access_token" \
+     -d '{"question": "如何使用这个论坛系统？"}'
+   ```
+
 ### 2. 前端集成
 
 1. **认证状态管理**：
@@ -519,6 +679,8 @@ shutdown
    - 帖子列表和详情页面
    - 评论和回复功能
    - 个人中心（资料、收藏、拉黑）
+   - 天气信息展示
+   - AI 问答功能
 
 ### 3. 常见问题
 
@@ -539,6 +701,14 @@ shutdown
 #### 3.3 上传相关
 - **问题**：头像上传失败
   **解决**：检查文件大小和类型是否符合要求
+
+#### 3.4 天气相关
+- **问题**：天气信息获取失败
+  **解决**：检查高德地图 API Key 是否配置正确
+
+#### 3.5 AI 相关
+- **问题**：AI 问答失败
+  **解决**：检查 AI API Key 是否配置正确
 
 ### 4. 开发建议
 
